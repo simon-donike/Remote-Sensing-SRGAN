@@ -11,3 +11,8 @@
 
 ## Tracking
 tracking via this WandB project: https://wandb.ai/simon-donike/2023_SRGAN
+
+## ToDo
+- implement spatial matching (probably best via superglue algo or grid search)
+- implement MISR
+- implement proper validation procedure to determine metrics for different runs on real Sen2 data

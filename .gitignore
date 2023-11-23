@@ -1,0 +1,11 @@
+__pycache__/
+wandb/
+data/
+logs/
+*.png
+*.pth
+*.ckpt
+*.pyc
+.vscode*
+*.vscode
+.vscode

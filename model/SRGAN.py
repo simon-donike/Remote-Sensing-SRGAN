@@ -1,0 +1,191 @@
+# Package Imports
+import torch
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+import pytorch_lightning as pl
+import numpy as np
+import time
+from omegaconf import OmegaConf
+import wandb
+
+# local imports
+from utils.calculate_metrics import calculate_metrics
+from utils.logging_helpers import plot_tensors
+from utils.normalise_s2 import normalise_s2
+
+#############################################################################################################
+# Build PL MODEL
+
+
+class SRGAN_model(pl.LightningModule):
+
+    def __init__(self, config_file="config.yaml"):
+        super(SRGAN_model, self).__init__()  # Call the parent class's init method
+
+        # general settings
+        #self.automatic_optimization = False
+
+        # get config file
+        self.config = OmegaConf.load("config.yaml")
+
+        """ IMPORT MODELS """
+        # Generator
+        from model.model_blocks import Generator
+        self.generator = Generator(large_kernel_size=self.config.Generator.large_kernel_size,
+                        small_kernel_size=self.config.Generator.small_kernel_size,
+                        n_channels=self.config.Generator.n_channels,
+                        n_blocks=self.config.Generator.n_blocks,
+                        scaling_factor=self.config.Generator.scaling_factor)
+        
+        # Discriminator
+        from model.model_blocks import Discriminator
+        self.discriminator = Discriminator(kernel_size=self.config.Discriminator.kernel_size,
+                            n_channels=self.config.Discriminator.n_channels,
+                            n_blocks=self.config.Discriminator.n_blocks,
+                            fc_size=self.config.Discriminator.fc_size)
+        
+        # VGG for encoding
+        from model.model_blocks import TruncatedVGG19
+        self.truncated_vgg19 = TruncatedVGG19(i=self.config.TruncatedVGG.i, j=self.config.TruncatedVGG.j)
+        # freeze VGG19
+        for param in self.truncated_vgg19.parameters():
+            param.requires_grad = False
+
+
+        # set up Losses
+        self.content_loss_criterion = torch.nn.MSELoss()
+        self.adversarial_loss_criterion = torch.nn.BCEWithLogitsLoss()
+
+    def forward(self,lr_imgs):
+
+        # perform generative Step
+        sr_imgs = self.generator(lr_imgs)
+        return(sr_imgs)
+
+    def training_step(self,batch,batch_idx,optimizer_idx):
+        
+        lr_imgs,hr_imgs = batch
+
+        # SR with generator
+        #sr_imgs = self.generator(lr_imgs)
+        #sr_imgs = convert_image(sr_imgs, source='[-1, 1]', target='imagenet-norm')  # (N, 3, 96, 96), imagenet-normed
+
+        # generate SR images, log losses immediately
+        sr_imgs = self.forward(lr_imgs)
+        metrics = calculate_metrics(sr_imgs,hr_imgs,phase="train")
+        for key, value in metrics.items():
+            self.log(f'{key}', value)
+        
+        # Discriminator Step
+        if optimizer_idx==0:
+
+            # run discriminator and get loss between pred labels and true labels
+            hr_discriminated = self.discriminator(hr_imgs)
+            sr_discriminated = self.discriminator(sr_imgs)
+            adversarial_loss = self.adversarial_loss_criterion(sr_discriminated, torch.ones_like(sr_discriminated))
+
+            # Binary Cross-Entropy loss
+            adversarial_loss = self.adversarial_loss_criterion(sr_discriminated,
+                                                            torch.zeros_like(sr_discriminated)) + self.adversarial_loss_criterion(hr_discriminated,
+                                                                                                                                    torch.ones_like(hr_discriminated))
+            # logg Discriminator loss
+            self.log("discriminator/adverserial_loss",adversarial_loss)
+
+            # return weighted discriminator loss
+            return adversarial_loss
+
+        # Generator Step
+        if optimizer_idx==1:
+            
+            """ 1. Get VGG space loss """
+            # encode images
+            sr_imgs_in_vgg_space = self.truncated_vgg19(sr_imgs)
+            hr_imgs_in_vgg_space = self.truncated_vgg19(hr_imgs).detach()  # detached because they're constant, targets
+            # Calculate the Perceptual loss between VGG encoded images to receive content loss
+            content_loss = self.content_loss_criterion(sr_imgs_in_vgg_space, hr_imgs_in_vgg_space)
+            
+            """ 2. Get Discriminator Opinion and loss """
+            # run discriminator and get loss between pred labels and true labels
+            sr_discriminated = self.discriminator(sr_imgs)
+            adversarial_loss = self.adversarial_loss_criterion(sr_discriminated, torch.ones_like(sr_discriminated))
+            
+            """ 3. Weight the losses"""
+            perceptual_loss = content_loss + self.config.Losses.adv_loss_beta * adversarial_loss
+
+            """ 4. Log Generator Loss """
+            self.log("generator/perceptual_loss",perceptual_loss)
+            
+            # return Generator loss
+            return perceptual_loss
+        
+    def validation_step(self,batch,batch_idx):
+        
+        """ 1. Extract and Predict """
+        lr_imgs,hr_imgs = batch
+        sr_imgs = self.forward(lr_imgs)
+
+        """ 2. Log Generator Metrics """
+        # log image metrics
+        metrics_hr_img = torch.clone(hr_imgs)  # deep copy to avoid graph problems
+        metrics_sr_img = torch.clone(sr_imgs)  
+        metrics = calculate_metrics(metrics_sr_img,metrics_hr_img,phase="val")
+        del metrics_hr_img, metrics_sr_img # delete copies from GPU
+        for key, value in metrics.items():
+            self.log(f'{key}', value)
+
+        # only perform image logging for n pics, not all 200
+        if batch_idx<self.config.Logging.num_val_images:
+            # log image visualizations  
+            plot_lr_img = torch.clone(lr_imgs)   # deep copy to avoid graph problems
+            plot_hr_img = torch.clone(hr_imgs)  
+            plot_sr_img = torch.clone(sr_imgs)  
+            val_img = plot_tensors(plot_lr_img,plot_sr_img,plot_hr_img,title="Val")
+            del plot_lr_img, plot_hr_img, plot_sr_img # delete copies from GPU
+            self.logger.experiment.log({"Val SR":  wandb.Image(val_img)})
+
+        """ 3. Log Discriminator metrics """
+        # run discriminator and get loss between pred labels and true labels
+        hr_discriminated = self.discriminator(hr_imgs)
+        sr_discriminated = self.discriminator(sr_imgs)
+        adversarial_loss = self.adversarial_loss_criterion(sr_discriminated, torch.ones_like(sr_discriminated))
+
+        # Binary Cross-Entropy loss
+        adversarial_loss = self.adversarial_loss_criterion(sr_discriminated,
+                                                        torch.zeros_like(sr_discriminated)) + self.adversarial_loss_criterion(hr_discriminated,
+                                                                                                                                torch.ones_like(hr_discriminated))
+        self.log("validation/DISC_adversarial_loss",adversarial_loss)
+
+
+    def on_validation_epoch_end(self):
+        # ToDo: fix, log test set image
+        pass
+        """ 1. Test and Log train images """
+        """
+        # get random batch from train loader
+        lr_imgs,hr_imgs = next(iter(self.trainer.datamodule.train_dataloader))
+        sr_imgs = self.forward(lr_imgs)
+        plot_sr_img = (sr_imgs+1)/2
+        plot_lr_img = (lr_imgs+1)/2
+        plot_hr_img = (hr_imgs+1)/2
+        train_img = plot_tensors(plot_lr_img,plot_sr_img,plot_hr_img,title="Train")
+        train_img = wandb.Image(train_img)
+        self.logger.experiment.log({"Train SR": train_img})
+        """
+
+
+    def configure_optimizers(self):
+
+        # configure optimizers
+        optimizer_g = torch.optim.Adam(params=filter(lambda p: p.requires_grad, self.generator.parameters()),lr=self.config.Optimizers.optim_g_lr)
+        optimizer_d = torch.optim.Adam(params=filter(lambda p: p.requires_grad, self.discriminator.parameters()),lr=self.config.Optimizers.optim_d_lr)
+
+        # configure schedulers
+        scheduler_g = ReduceLROnPlateau(optimizer_g, mode='min', factor=self.config.Schedulers.factor_g, patience=self.config.Schedulers.patience_g, verbose=self.config.Schedulers.verbose)
+        scheduler_d = ReduceLROnPlateau(optimizer_d, mode='min', factor=self.config.Schedulers.factor_d, patience=self.config.Schedulers.patience_d, verbose=self.config.Schedulers.verbose)
+
+        # return schedulers and optimizers
+        return [
+                    [optimizer_d, optimizer_g],
+                    [{'scheduler': scheduler_d, 'monitor': self.config.Schedulers.metric, 'reduce_on_plateau': True, 'interval': 'epoch', 'frequency': 1},
+                     {'scheduler': scheduler_g, 'monitor': self.config.Schedulers.metric, 'reduce_on_plateau': True, 'interval': 'epoch', 'frequency': 1}],
+                ]
+    

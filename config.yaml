@@ -1,0 +1,53 @@
+Model:
+  load_checkpoint: True
+  ckpt_path: 'logs\curated_ckpts\pretrained_SPOT6_int_blur_histMatched.ckpt'
+
+Data:
+  train_batch_size: 12
+  val_batch_size: 8
+  num_workers: 6
+  prefetch_factor: 2
+
+  # SPOT6 special settings
+  dataset_type: 'SPOT6' # ['cv', 'SPOT6']
+  data_dir: 'E:/thesis_paper/data/' # ['data/openImages/',''E:/thesis_paper/data/']
+  sen2_amount: 1
+  spectral_matching: 'histogram'
+  return_type: 'cross_sensor' #interpolated_matched
+
+
+
+Generator:
+  large_kernel_size: 9
+  small_kernel_size: 3
+  n_channels: 64
+  n_blocks: 16
+  scaling_factor: 4
+
+Discriminator:
+  kernel_size: 3
+  n_channels: 64
+  n_blocks: 8
+  fc_size: 1024
+
+TruncatedVGG:
+  i: 5
+  j: 4
+
+Optimizers:
+  optim_g_lr: 1e-4
+  optim_d_lr: 1e-4
+
+Schedulers:
+  metric: 'val/L1'
+  patience_g: 3
+  patience_d: 3
+  factor_g: 0.25
+  factor_d: 0.25
+  verbose: True
+
+Losses:
+  adv_loss_beta:  1e-3
+
+Logging:
+  num_val_images: 5

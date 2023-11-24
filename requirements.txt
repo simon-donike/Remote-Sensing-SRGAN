@@ -1,0 +1,17 @@
+# Deep Learning Frameworks
+torch
+torchvision
+pytorch-lightning
+
+# Generative AI helpers
+albumentations
+einops
+wandb
+
+# Utilities and Additional Tools
+tqdm
+omegaconf
+
+# General
+matplotlib
+numpy

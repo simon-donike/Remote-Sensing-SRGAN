@@ -1,11 +1,13 @@
-# Revision of SRGAN
-### Performed updates copared to thesis version
+# Remote Sensing SRGAN
+This repository is a revised version of my [master's thesis](https://www.donike.net/m-sc-thesis-deep-super-resolution-of-sentinel-2-time-series/).
+#### Performed updates copared to thesis version
 - implementation in pytorch Lightning, including versioning, logging, experiment tracking
 - new dataloaders including stratification (by landcover), normalization
-### ToDos
+#### ToDos
 - implement spatial matching (probably best via superglue algo or grid search)
 - implement MISR
 - implement proper validation procedure to determine metrics for different runs on real Sen2 data
+- potentially include NIR band in SR
 
 # Experiment Results
 1. [Experiment 1: Oxford Dogs Dataset](#experiment-1-oxford-dogs-dataset)

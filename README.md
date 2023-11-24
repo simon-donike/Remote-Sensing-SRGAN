@@ -78,7 +78,7 @@ tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs
 
 ## Experiment 5: SPOT6 Dataset - Interpoalted Version - Stratiefied Data by Land Cover Classification - Maximum Time Delta of 10 days
 #### Description
-Continued training from Experiment 4 checkpoint. The dataset has been further reduced to only include LR-HR pairs that were taken 5 or less days apart. Another important change is that the reflectance has been converted to the Sen2 spectral response by histogram matching the SPOT6 LR and HR versions to fit the histogram of the real Sen2 image. This model has not been trained to convergence and can only serve as a test.
+Continued training from Experiment 4 checkpoint. The dataset has been further reduced to only include LR-HR pairs that were taken 10 or less days apart. Another important change is that the reflectance has been converted to the Sen2 spectral response by histogram matching the SPOT6 LR and HR versions to fit the histogram of the real Sen2 image. This model has not been trained to convergence and can only serve as a test.
 #### PSNR and SSIM Results
 | Metric | Value |
 | ------ | ----- |

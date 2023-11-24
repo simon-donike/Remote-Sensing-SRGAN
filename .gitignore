@@ -9,3 +9,4 @@ logs/
 .vscode*
 *.vscode
 .vscode
+lightning_logs/

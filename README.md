@@ -7,8 +7,8 @@
 - implement MISR
 - implement proper validation procedure to determine metrics for different runs on real Sen2 data
 
-## Experiment Results
-### Experiment 1: Oxford Dogs Dataset
+# Experiment Results
+## Experiment 1: Oxford Dogs Dataset
 #### Description
 Initial test to confirm the capabilities of the SRGAN model. performed on a small dataset for fast iteration.
 #### PSNR and SSIM Results
@@ -23,7 +23,7 @@ Good results given the small dataset. Overfitting due to low variance in dataset
 #### Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/sk01q4zl)
 
-### Experiment 2: Standard OpenAI CV dataset
+## Experiment 2: Standard OpenAI CV dataset
 #### Description
 Further testing on CV camera imagery, this time on a large dataset.
 #### PSNR and SSIM Results
@@ -38,7 +38,7 @@ Very good results. Some halucinations, but generally realistic appearance.
 #### Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/61amatk9)
 
-### Experiment 3: SPOT6 Dataset - Interpolated Version
+## Experiment 3: SPOT6 Dataset - Interpolated Version
 #### Description
 First test on remote sensing imagery. Uses SPOT6 as the HR and an interpolated version as the LR.
 #### PSNR and SSIM Results
@@ -53,7 +53,7 @@ Very good results. Comapratively low PSNR and SSIM can be explained by the switc
 ## Tracking
 tracking via this WandB run: [Run]([https://wandb.ai/simon-donike/2023_SRGAN/runs/61amatk9](https://wandb.ai/simon-donike/2023_SRGAN/runs/frimsoll))
 
-### Experiment 4: SPOT6 Dataset - Interpoalted Version - Stratiefied Data by Land Cover Classification
+## Experiment 4: SPOT6 Dataset - Interpoalted Version - Stratiefied Data by Land Cover Classification
 #### Description
 Continued training from Experiment 3 checkpoint. The data has now been stratified in order to prevent the overrepresentation of agricultural images. 
 #### PSNR and SSIM Results
@@ -68,7 +68,7 @@ Improved results comapred to experiment 3. Stratification helped to better SR ur
 #### Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/eqjj87uc)
 
-### Experiment 5: SPOT6 Dataset - Interpoalted Version - Stratiefied Data by Land Cover Classification - Maximum Time Delta of 10 days
+## Experiment 5: SPOT6 Dataset - Interpoalted Version - Stratiefied Data by Land Cover Classification - Maximum Time Delta of 10 days
 #### Description
 Continued training from Experiment 4 checkpoint. The dataset has been further reduced to only include LR-HR pairs that were taken 5 or less days apart. Another important change is that the reflectance has been converted to the Sen2 spectral response by histogram matching the SPOT6 LR and HR versions to fit the histogram of the real Sen2 image. This model has not been trained to convergence and can only serve as a test.
 #### PSNR and SSIM Results
@@ -84,7 +84,7 @@ Improved results comapred to experiment 4. Removal of larger time difference bet
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/d1svvufy)
 
 
-### Experiment 6: SPOT6 Dataset - Interpoalted Version - Stratiefied Data by Land Cover Classification - Maximum Time Delta of 10 days - Normalization
+## Experiment 6: SPOT6 Dataset - Interpoalted Version - Stratiefied Data by Land Cover Classification - Maximum Time Delta of 10 days - Normalization
 #### Description
 Continued training from Experiment 4 checkpoint. Now, the data is linearilly srtetched by dividing by 3000 in the Sen2 spectrum, then transformed to -1..+1.
 #### PSNR and SSIM Results
@@ -99,7 +99,7 @@ Lower results.
 #### Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/xptuptpr)
 
-### Experiment 7: SPOT6 - Sen2 Cross Sensor Dataset
+## Experiment 7: SPOT6 - Sen2 Cross Sensor Dataset
 #### Description
 Continued training from Experiment 6 Checkpoint.  
 The previous augmentations are kept:

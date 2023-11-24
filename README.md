@@ -18,7 +18,7 @@ Initial test to confirm the capabilities of the SRGAN model. performed on a smal
 ## Results
 Good results given the small dataset. Overfitting due to low variance in dataset, but clearly SR is performed.
 #### Example Image
-![Experiment 2 Example Image](path/to/experiment_2_image.png)
+![Experiment 1 Example Image](resources/oxDogs_val.png)
 ## Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/sk01q4zl)
 

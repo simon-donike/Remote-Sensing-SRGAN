@@ -33,11 +33,11 @@ Further testing on CV camera imagery, this time on a large dataset.
 ## Results
 Very good results. Some halucinations, but generally realistic appearance.
 #### Example Image
-![Experiment 2 Example Image](path/to/experiment_2_image.png)
+![Experiment 2 Example Image](resources/openIm_val.png)
 ## Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/61amatk9)
 
-### Experiment 3: SPOT6 Dataset - Interpoalted Version
+### Experiment 3: SPOT6 Dataset - Interpolated Version
 #### Description
 First test on remote sensing imagery. Uses SPOT6 as the HR and an interpolated version as the LR.
 #### PSNR and SSIM Results
@@ -48,7 +48,7 @@ First test on remote sensing imagery. Uses SPOT6 as the HR and an interpolated v
 ## Results
 Very good results. Comapratively low PSNR and SSIM can be explained by the switch to the remote sensing dataset. SR works well for agricultural and rural areas, but can not generalize to more urban areas and larger roads such as highways are made to look like unpaved paths.
 #### Example Image
-![Experiment 2 Example Image](path/to/experiment_2_image.png)
+![Experiment 3 Example Image](resources/spot6v1_val.png)
 ## Tracking
 tracking via this WandB run: [Run]([https://wandb.ai/simon-donike/2023_SRGAN/runs/61amatk9](https://wandb.ai/simon-donike/2023_SRGAN/runs/frimsoll))
 
@@ -63,7 +63,7 @@ Continued training from Experiment 3 checkpoint. The data has now been stratifie
 ## Results
 Improved results comapred to experiment 3. Stratification helped to better SR urban areas. Generally realistic appearance.
 #### Example Image
-![Experiment 2 Example Image](path/to/experiment_2_image.png)
+![Experiment 4 Example Image](resources/spot6strat_val.png)
 ## Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/eqjj87uc)
 
@@ -78,7 +78,7 @@ Continued training from Experiment 4 checkpoint. The dataset has been further re
 ## Results
 Improved results comapred to experiment 4. Removal of larger time difference between LR and HR as well as the transformation to the Sen2 Spectrum lead to a significant increase in performance metrics. Note: The value range is now 0..1 in 10000 Sen2 steps instead of the 8bit 0..255 steps in the previous runs. This significantly improves the PSNR especially.
 #### Example Image
-![Experiment 2 Example Image](path/to/experiment_2_image.png)
+![Experiment 5 Example Image](resources/spot6stratTiemDeltaSen2Spectrum_val.png)
 ## Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/d1svvufy)
 
@@ -94,7 +94,7 @@ Continued training from Experiment 4 checkpoint. Now, the data is linearilly srt
 ## Results
 Lower results.
 #### Example Image
-![Experiment 2 Example Image](path/to/experiment_2_image.png)
+![Experiment 6 Example Image](resources/spot6stratTiemDeltaSen2Spectrum_Norm_val.png)
 ## Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/xptuptpr)
 
@@ -114,7 +114,7 @@ The previous augmentations are kept:
 ## Results
 Exceptional results given the cross-sensor approach. Improvements from stratification, nornalization and time delta removals hold true for this experiment as well.
 #### Example Image
-![Experiment 2 Example Image](path/to/experiment_2_image.png)
+![Experiment 7 Example Image](resources/cross_sensor_val.png)
 ## Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/7knnqsis)
 

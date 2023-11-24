@@ -26,10 +26,10 @@ Initial test to confirm the capabilities of the SRGAN model. performed on a smal
 | SSIM   | 0.690 |
 #### Results
 Good results given the small dataset. Overfitting due to low variance in dataset, but clearly SR is performed.
-#### Example Image
-![Experiment 1 Example Image](resources/oxDogs_val.png)
 #### Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/sk01q4zl)
+#### Example Image
+![Experiment 1 Example Image](resources/oxDogs_val.png)
 
 ## Experiment 2: Standard OpenAI CV dataset
 #### Description
@@ -41,10 +41,10 @@ Further testing on CV camera imagery, this time on a large dataset.
 | SSIM   | 0.718 |
 #### Results
 Very good results. Some halucinations, but generally realistic appearance.
-#### Example Image
-![Experiment 2 Example Image](resources/openIm_val.png)
 #### Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/61amatk9)
+#### Example Image
+![Experiment 2 Example Image](resources/openIm_val.png)
 
 ## Experiment 3: SPOT6 Dataset - Interpolated Version
 #### Description
@@ -56,10 +56,10 @@ First test on remote sensing imagery. Uses SPOT6 as the HR and an interpolated v
 | SSIM   | 0.500 |
 #### Results
 Very good results. Comapratively low PSNR and SSIM can be explained by the switch to the remote sensing dataset. SR works well for agricultural and rural areas, but can not generalize to more urban areas and larger roads such as highways are made to look like unpaved paths.
-#### Example Image
-![Experiment 3 Example Image](resources/spot6v1_val.png)
 ## Tracking
 tracking via this WandB run: [Run]([https://wandb.ai/simon-donike/2023_SRGAN/runs/61amatk9](https://wandb.ai/simon-donike/2023_SRGAN/runs/frimsoll))
+#### Example Image
+![Experiment 3 Example Image](resources/spot6v1_val.png)
 
 ## Experiment 4: SPOT6 Dataset - Interpoalted Version - Stratiefied Data by Land Cover Classification
 #### Description
@@ -71,10 +71,10 @@ Continued training from Experiment 3 checkpoint. The data has now been stratifie
 | SSIM   | 0.538 |
 #### Results
 Improved results comapred to experiment 3. Stratification helped to better SR urban areas. Generally realistic appearance.
-#### Example Image
-![Experiment 4 Example Image](resources/spot6strat_val.png)
 #### Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/eqjj87uc)
+#### Example Image
+![Experiment 4 Example Image](resources/spot6strat_val.png)
 
 ## Experiment 5: SPOT6 Dataset - Interpoalted Version - Stratiefied Data by Land Cover Classification - Maximum Time Delta of 10 days
 #### Description
@@ -86,11 +86,10 @@ Continued training from Experiment 4 checkpoint. The dataset has been further re
 | SSIM   | 0.830 |
 #### Results
 Improved results comapred to experiment 4. Removal of larger time difference between LR and HR as well as the transformation to the Sen2 Spectrum lead to a significant increase in performance metrics. Note: The value range is now 0..1 in 10000 Sen2 steps instead of the 8bit 0..255 steps in the previous runs. This significantly improves the PSNR especially.
-#### Example Image
-![Experiment 5 Example Image](resources/spot6stratTiemDeltaSen2Spectrum_val.png)
 #### Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/d1svvufy)
-
+#### Example Image
+![Experiment 5 Example Image](resources/spot6stratTiemDeltaSen2Spectrum_val.png)
 
 ## Experiment 6: SPOT6 Dataset - Interpoalted Version - Stratiefied Data by Land Cover Classification - Maximum Time Delta of 10 days - Normalization
 #### Description
@@ -102,10 +101,10 @@ Continued training from Experiment 4 checkpoint. Now, the data is linearilly srt
 | SSIM   | 0.695 |
 #### Results
 Lower results.
-#### Example Image
-![Experiment 6 Example Image](resources/spot6stratTiemDeltaSen2Spectrum_Norm_val.png)
 #### Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/xptuptpr)
+#### Example Image
+![Experiment 6 Example Image](resources/spot6stratTiemDeltaSen2Spectrum_Norm_val.png)
 
 ## Experiment 7: SPOT6 - Sen2 Cross Sensor Dataset
 #### Description
@@ -122,8 +121,8 @@ The previous augmentations are kept:
 | SSIM   | 0.754 |
 #### Results
 Exceptional results given the cross-sensor approach. Improvements from stratification, nornalization and time delta removals hold true for this experiment as well.
-#### Example Image
-![Experiment 7 Example Image](resources/cross_sensor_val.png)
 #### Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/7knnqsis)
+#### Example Image
+![Experiment 7 Example Image](resources/cross_sensor_val.png)
 

@@ -10,10 +10,10 @@
 # Experiment Results
 1. [Experiment 1: Oxford Dogs Dataset](#experiment-1-oxford-dogs-dataset)
 2. [Experiment 2: Standard OpenAI CV Dataset](#experiment-2-standard-openai-cv-dataset)
-3. [Experiment 3: SPOT6 - Interpolated Version](#experiment-3-spot6-dataset---interpolated-version)
-4. [Experiment 4: SPOT6 - Interpolated Version - Stratified by Land Cover](#experiment-4-spot6-dataset---interpolated-version---stratified-data-by-land-cover-classification)
-5. [Experiment 5: SPOT6 - Interpolated Version - Stratified by Land Cover - Maximum Time Delta of 10 Days](#experiment-5-spot6-dataset---interpolated-version---stratified-data-by-land-cover-classification---maximum-time-delta-of-10-days)
-6. [Experiment 6: SPOT6 - Interpolated Version - Stratified by Land Cover - Maximum Time Delta of 10 Days - Normalization](#experiment-6-spot6-dataset---interpolated-version---stratified-data-by-land-cover-classification---maximum-time-delta-of-10-days---normalization)
+3. [Experiment 3: SPOT6 Dataset - Interpolated Version](#experiment-3-spot6-dataset---interpolated-version)
+4. [Experiment 4: SPOT6 Dataset - Interpolated Version - Stratified by Land Cover](#experiment-4-spot6-dataset---interpolated-version---stratified-by-land-cover)
+5. [Experiment 5: SPOT6 Dataset - Interpolated Version - Stratified by Land Cover - Maximum Time Delta of 10 Days](#experiment-5-spot6-dataset---interpolated-version---stratified-by-land-cover---maximum-time-delta-of-10-days)
+6. [Experiment 6: SPOT6 Dataset - Interpolated Version - Stratified by Land Cover - Maximum Time Delta of 10 Days - Normalization](#experiment-6-spot6-dataset---interpolated-version---stratified-by-land-cover---maximum-time-delta-of-10-days---normalization)
 7. [Experiment 7: SPOT6 - Sen2 Cross Sensor Dataset](#experiment-7-spot6---sen2-cross-sensor-dataset)
 
 ## Experiment 1: Oxford Dogs Dataset

@@ -8,7 +8,6 @@
 - implement proper validation procedure to determine metrics for different runs on real Sen2 data
 
 # Experiment Results
-### Table of Contents
 1. [Experiment 1: Oxford Dogs Dataset](#experiment-1-oxford-dogs-dataset)
 2. [Experiment 2: Standard OpenAI CV Dataset](#experiment-2-standard-openai-cv-dataset)
 3. [Experiment 3: SPOT6 Dataset - Interpolated Version](#experiment-3-spot6-dataset---interpolated-version)

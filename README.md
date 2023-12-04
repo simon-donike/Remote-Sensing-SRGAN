@@ -35,6 +35,9 @@ Download the pretrained weights [here](https://drive.google.com/drive/folders/1R
 2. [Experiment 2: MISR interpolated SPOT6](#experiment-2-misr-interpolated-spot6)
 3. [Experiment 3: MISR on real Sentinel-2 time series](#experiment-3-misr-on-real-sentinel-2-time-series)
 
+## Logging
+<iframe src="https://wandb.ai/simon-donike/2023_SRGAN" width="600" height="400"></iframe>
+
 
 # Experiments: SISR
 ## Experiment 1: Oxford Dogs Dataset

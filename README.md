@@ -1,13 +1,24 @@
-# Remote Sensing SRGAN
+# Remote Sensing SRGAN - General Info
 This repository is a revised version of my [master's thesis](https://www.donike.net/m-sc-thesis-deep-super-resolution-of-sentinel-2-time-series/).
+#### Synopsis
+This is an SRGAN for both Single-Image and Multi-Image Super-Resolution of Remote Sensing imagery. This model performs SR only on the RGB bands. It has been trained on SPOT-6 and Sentinel-2 image pairs and time-series of the region of Brittany in France, which means generalization of the provided checkpoints to other regions can not be guaranteed.  
+With more rigorous versioning, transfer learning and LR scheduling, this workflow surpasss the results obtained in the master's thesis.
 #### Performed updates copared to thesis version
-- implementation in pytorch Lightning, including versioning, logging, experiment tracking
-- new dataloaders including stratification (by landcover), normalization
+- proper implementation in Pytorch Lightning, including versioning, logging, experiment tracking
+- new dataloaders including stratification (by landcover), normalization, fusion warmup training
 #### ToDos
 - implement spatial matching (probably best via superglue algo or grid search)
-- implement MISR
 - implement proper validation procedure to determine metrics for different runs on real Sen2 data
-- potentially include NIR band in SR
+
+# Reproducability
+Steps to train your own version:
+- Install dependencies from requirements.txt. Be sure to adhere especially to the pytorch lightning version requirement, since the way of handling multiple optimizers has been removed in more recent versions.
+- Define your own dataset and dataloaders. You can either use CV datasets as presented in the utils/datasets.py files, or just create your own pytorch lightning datamodule. The datamodule should return a tuple of LR (batches,views if in MISR,bands,width,height) and HR (batches,bands,width,height). Don't return the LR 'views' if in SISR mode. Change the dataset_selector function to accept and return your datamodule.
+- Edit config.py with the parameters in your model, most importantly the image sizes, checkpoints, scheduler settings and dataset settings.
+- run main.py file to train, automatic logging is enabled.
+
+# Pretrained Weights
+Download the pretrained weights [here](https://drive.google.com/drive/folders/1RcU3EQnJ7O6fYf8Zr7kqN-KCnFhsTYCa?usp=sharing) and put them in the logs/curated_ckpts folder. Check the experiments below to chose the right pretrained checkpoint for your purpose. If SR is to be performed on different regions, I strongly recommend finetuning.
 
 # Experiment Results
 ## SISR
@@ -21,6 +32,8 @@ This repository is a revised version of my [master's thesis](https://www.donike.
 
 ## MISR
 1. [Experiment 1: Fusion Warm-Up](#experiment-1-fusion-warmup)
+2. [Experiment 2: MISR interpolated SPOT6](#experiment-2-misr-interpolated-spot6)
+3. [Experiment 3: MISR on real Sentinel-2 time series](#experiment-3-misr-on-real-sentinel-2-time-series)
 
 
 # Experiments: SISR
@@ -36,7 +49,7 @@ Initial test to confirm the capabilities of the SRGAN model. performed on a smal
 Good results given the small dataset. Overfitting due to low variance in dataset, but clearly SR is performed.
 #### Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/sk01q4zl)
-#### Example Image
+#### Example Validation Image
 ![Experiment 1 Example Image](resources/oxDogs_val.png)
 
 ## Experiment 2: Standard OpenAI CV dataset
@@ -51,7 +64,7 @@ Further testing on CV camera imagery, this time on a large dataset.
 Very good results. Some halucinations, but generally realistic appearance.
 #### Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/61amatk9)
-#### Example Image
+#### Example Validation Image
 ![Experiment 2 Example Image](resources/openIm_val.png)
 
 ## Experiment 3: SPOT6 Dataset - Interpolated Version
@@ -66,7 +79,7 @@ First test on remote sensing imagery. Uses SPOT6 as the HR and an interpolated v
 Very good results. Comapratively low PSNR and SSIM can be explained by the switch to the remote sensing dataset. SR works well for agricultural and rural areas, but can not generalize to more urban areas and larger roads such as highways are made to look like unpaved paths.
 ## Tracking
 tracking via this WandB run: [Run]([https://wandb.ai/simon-donike/2023_SRGAN/runs/61amatk9](https://wandb.ai/simon-donike/2023_SRGAN/runs/frimsoll))
-#### Example Image
+#### Example Validation Image
 ![Experiment 3 Example Image](resources/spot6v1_val.png)
 
 ## Experiment 4: SPOT6 Dataset - Interpoalted Version - Stratiefied Data by Land Cover Classification
@@ -81,7 +94,7 @@ Continued training from Experiment 3 checkpoint. The data has now been stratifie
 Improved results comapred to experiment 3. Stratification helped to better SR urban areas. Generally realistic appearance.
 #### Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/eqjj87uc)
-#### Example Image
+#### Example Validation Image
 ![Experiment 4 Example Image](resources/spot6strat_val.png)
 
 ## Experiment 5: SPOT6 Dataset - Interpoalted Version - Stratiefied Data by Land Cover Classification - Maximum Time Delta of 10 days
@@ -96,7 +109,7 @@ Continued training from Experiment 4 checkpoint. The dataset has been further re
 Improved results comapred to experiment 4. Removal of larger time difference between LR and HR as well as the transformation to the Sen2 Spectrum lead to a significant increase in performance metrics. Note: The value range is now 0..1 in 10000 Sen2 steps instead of the 8bit 0..255 steps in the previous runs. This significantly improves the PSNR especially.
 #### Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/d1svvufy)
-#### Example Image
+#### Example Validation Image
 ![Experiment 5 Example Image](resources/spot6stratTiemDeltaSen2Spectrum_val.png)
 
 ## Experiment 6: SPOT6 Dataset - Interpoalted Version - Stratiefied Data by Land Cover Classification - Maximum Time Delta of 10 days - Normalization
@@ -111,7 +124,7 @@ Continued training from Experiment 4 checkpoint. Now, the data is linearilly srt
 Slightly worse results.
 #### Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/xptuptpr)
-#### Example Image
+#### Example Validation Image
 ![Experiment 6 Example Image](resources/spot6stratTiemDeltaSen2Spectrum_Norm_val.png)
 
 ## Experiment 7: SPOT6 - Sen2 Cross Sensor Dataset
@@ -131,7 +144,7 @@ The previous augmentations are kept:
 Exceptional results given the cross-sensor approach. Improvements from stratification, nornalization and time delta removals hold true for this experiment as well.
 #### Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/7knnqsis)
-#### Example Image
+#### Example Validation Image
 ![Experiment 7 Example Image](resources/cross_sensor_val.png)
 
 # Experiments: MISR
@@ -143,7 +156,7 @@ In order to enable the output of sensical images, the fusion network is pretrain
 The output of the converged fusion network is the mean of the input images, which is it's intended purpose in this warmup stage.
 #### Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/eqrsdz60)
-#### Example Image
+#### Example Validation Image
 This image shows the first acquisition of the time series (left), the fused image (middle), and the HR image (right).
 ![Experiment 7 Example Image](resources/fusion.png)
 
@@ -154,7 +167,7 @@ in this experiment, the same data is used as in the fusion warm up. Interpolated
 tbd
 #### Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/7ldju4hr)
-#### Example Image
+#### Example Validation Image
 Still training...  
 ![Experiment 7 Example Image](resources/misr1.png)
 
@@ -165,6 +178,6 @@ A real Sentinel-2time series is used, with the same dataset modifications as in 
 tbd
 #### Tracking
 tracking via this WandB run: [Run]()
-#### Example Image
+#### Example Validation Image
 Still training...  
 ![Experiment 7 Example Image]()

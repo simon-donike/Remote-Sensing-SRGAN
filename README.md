@@ -36,8 +36,7 @@ Download the pretrained weights [here](https://drive.google.com/drive/folders/1R
 3. [Experiment 3: MISR on real Sentinel-2 time series](#experiment-3-misr-on-real-sentinel-2-time-series)
 
 ## Logging
-<iframe src="https://wandb.ai/simon-donike/2023_SRGAN" width="600" height="400"></iframe>
-
+Follow all runs on [WandB](https://wandb.ai/simon-donike/2023_SRGAN).
 
 # Experiments: SISR
 ## Experiment 1: Oxford Dogs Dataset

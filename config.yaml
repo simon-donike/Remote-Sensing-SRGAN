@@ -5,10 +5,10 @@ SR_type: 'MISR' # [SISR, MISR]
 # Data Settings
 Data:
   # Loader Settings
-  train_batch_size: 16 #12
+  train_batch_size: 12 #12
   val_batch_size: 8
-  num_workers: 16
-  prefetch_factor: 8 #8 #2
+  num_workers: 6
+  prefetch_factor: 2 #8 #2
 
   # Detailed Dataset Setttings
   dataset_type: 'SPOT6' # ['cv', 'SPOT6']
@@ -22,7 +22,8 @@ Data:
 Model:
   load_checkpoint: True
   ckpt_path: 'logs\curated_ckpts\pretrained_SPOT6_int_blur_histMatched.ckpt'
-
+  load_fusion_checkpoint: True
+  fusion_ckpt_path: 'logs\curated_ckpts\pretrained_Fusion.ckpt'
 Warmup:
   fusion: # train fusion in isolation previously
     enable: True

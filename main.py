@@ -19,6 +19,7 @@ from utils.logging_helpers import plot_tensors
 from utils.datasets import cv_dataset
 from utils.datasets import create_pl_datamodule
 from model.SRGAN import SRGAN_model
+from model.fusion import RecursiveNet_pl
 
 
 # Run Main Function
@@ -34,11 +35,12 @@ if __name__ == '__main__':
     #############################################################################################################
     " LOAD MODEL "
     #############################################################################################################
-
+    # load rpetrained or instanciate new
     if config.Model.load_checkpoint:
         model = SRGAN_model.load_from_checkpoint(config.Model.ckpt_path, strict=False)
     else:
         model = SRGAN_model()
+
 
     #############################################################################################################
     " GET DATA "
@@ -52,7 +54,7 @@ if __name__ == '__main__':
     #############################################################################################################
     # set up logging
     from pytorch_lightning.loggers import WandbLogger
-    wandb_project = "testing"#"2023_SRGAN"
+    wandb_project = "2023_SRGAN" #"testing"
     wandb_logger = WandbLogger(project=wandb_project,entity="simon-donike")
 
     from pytorch_lightning import loggers as pl_loggers

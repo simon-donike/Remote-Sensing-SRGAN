@@ -10,6 +10,7 @@ This repository is a revised version of my [master's thesis](https://www.donike.
 - potentially include NIR band in SR
 
 # Experiment Results
+## SISR
 1. [Experiment 1: Oxford Dogs Dataset](#experiment-1-oxford-dogs-dataset)
 2. [Experiment 2: Standard OpenAI CV Dataset](#experiment-2-standard-openai-cv-dataset)
 3. [Experiment 3: SPOT6 Dataset - Interpolated Version](#experiment-3-spot6-dataset---interpolated-version)
@@ -18,6 +19,11 @@ This repository is a revised version of my [master's thesis](https://www.donike.
 6. [Experiment 6: SPOT6 Dataset - Interpolated Version - Stratified by Land Cover - Maximum Time Delta of 10 Days - Normalization](#experiment-6-spot6-dataset---interpolated-version---stratified-by-land-cover---maximum-time-delta-of-10-days---normalization)
 7. [Experiment 7: SPOT6 - Sen2 Cross Sensor Dataset](#experiment-7-spot6---sen2-cross-sensor-dataset)
 
+## MISR
+1. [Experiment 1: Fusion Warm-Up](#experiment-1-fusion-warmup)
+
+
+# Experiments: SISR
 ## Experiment 1: Oxford Dogs Dataset
 #### Description
 Initial test to confirm the capabilities of the SRGAN model. performed on a small dataset for fast iteration.
@@ -102,7 +108,7 @@ Continued training from Experiment 4 checkpoint. Now, the data is linearilly srt
 | PSNR   | 29.93 |
 | SSIM   | 0.695 |
 #### Results
-Lower results.
+Slightly worse results.
 #### Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/xptuptpr)
 #### Example Image
@@ -128,3 +134,37 @@ tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs
 #### Example Image
 ![Experiment 7 Example Image](resources/cross_sensor_val.png)
 
+# Experiments: MISR
+## Experiment 1: Fusion Warmup
+#### Description
+The MISR workflow contains a small network in order to recursively fuse the multiple revisits. If instanciated randomly, the network outputs nonsensical encodings, which prevent the generator from creating proper SR images. Since both the generator and the fusion network are trained in the same loss, a randomly instanciated fusion network never returns proper encodings and therefore prevents the generator from training as well.  
+In order to enable the output of sensical images, the fusion network is pretrained. Several copies of the LR tensor are created on the fly and a small amount of random gaissian noise is added to each of the revisits. The fused network is then compared to the mean of the LR revisits. This leads to the fusion network outputting a mean image of the LR time series in the image space. This encoding can then be used to train the fusion and generator together.
+#### Results
+The output of the converged fusion network is the mean of the input images, which is it's intended purpose in this warmup stage.
+#### Tracking
+tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/eqrsdz60)
+#### Example Image
+This image shows the first acquisition of the time series (left), the fused image (middle), and the HR image (right).
+![Experiment 7 Example Image](resources/fusion.png)
+
+## Experiment 2: MISR interpolated SPOT6
+#### Description
+in this experiment, the same data is used as in the fusion warm up. Interpolated SPOT6 data, in the Sentinel-2 spectral domain, copied 4 times with added noise to simulate the time series.
+#### Results
+tbd
+#### Tracking
+tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/7ldju4hr)
+#### Example Image
+Still training...  
+![Experiment 7 Example Image](resources/misr1.png)
+
+## Experiment 3: MISR on real Sentinel-2 time series
+#### Description
+A real Sentinel-2time series is used, with the same dataset modifications as in the SISR runs (normalized according to Sen-2 conventional stretch, time-delta of 1st image >3 removed, stratified by land use).
+#### Results
+tbd
+#### Tracking
+tracking via this WandB run: [Run]()
+#### Example Image
+Still training...  
+![Experiment 7 Example Image]()

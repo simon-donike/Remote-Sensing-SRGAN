@@ -248,8 +248,14 @@ class SPOT6(Dataset):
             if self.sen2_amount>1:
                 # stack tensor x times to simulate MISR
                 lr = torch.stack([lr]*self.sen2_amount)
-                #lr = lr.view(self.sen2_amount*lr.shape[1], lr.shape[2], lr.shape[3]) # goes from 4,3,75,75 to 12,75,75
-                #assert lr.shape[0]==self.sen2_amount*3
+                # add noise to tensor
+                # Generate Gaussian noise
+                noise = torch.randn_like(lr)
+                std = 0.075
+                scaled_noise = std * noise
+                lr = lr + scaled_noise
+                lr = torch.clamp(lr, -1, 1)
+
             return lr,hr
         
 
@@ -335,7 +341,7 @@ def create_pl_datamodule(train_loader,val_loader):
 if __name__ == "__main__":
     print("Dataset: saving test image to disk...")
     ds = SPOT6('E:/thesis_paper/data/' ,return_type='interpolated_matched',phase="train",sen2_amount=4)
-    lr,hr = ds.__getitem__(30)
+    lr,hr = ds.__getitem__(31)
 
 
     # save first image of tensor to disk
@@ -345,10 +351,12 @@ if __name__ == "__main__":
     hr = normalise_s2(hr,stage="denorm")
     from utils.sen2_stretch import sen2_stretch
     lr = sen2_stretch(lr) 
-    hr = sen2_stretch(hr) 
+    hr = sen2_stretch(hr)
+    if len(lr.shape)==4:
+        lr = lr[0,:,:,:] 
     # plot two images
     fig,ax = plt.subplots(1,2)
-    ax[0].imshow(hr.permute(1,2,0).numpy())
-    ax[1].imshow(lr.permute(1,2,0).numpy())
+    ax[0].imshow(hr.permute(1,2,0).numpy()*2)
+    ax[1].imshow(lr.permute(1,2,0).numpy()*2)
     plt.savefig("test_image.png")
     plt.close()

@@ -14,7 +14,6 @@ from utils.logging_helpers import plot_fusion
 from utils.normalise_s2 import normalise_s2
 
 
-
 #############################################################################################################
 # Build PL MODEL
 
@@ -30,8 +29,11 @@ class SRGAN_model(pl.LightningModule):
         """ IMPORT MODELS """
         # if MISR is wanted, instantiate fusion net
         if self.config.SR_type=="MISR":
-            from model.fusion import RecursiveNet
-            self.fusion = RecursiveNet()
+            from model.fusion import RecursiveNet,RecursiveNet_pl
+            self.fusion = RecursiveNet_pl()
+                # load pretrained weights
+            if self.config.Model.load_fusion_checkpoint:
+                self.fusion = RecursiveNet_pl.load_from_checkpoint(self.config.Model.fusion_ckpt_path, strict=False)
 
         # Generator
         from model.model_blocks import Generator
@@ -70,13 +72,6 @@ class SRGAN_model(pl.LightningModule):
     def training_step(self,batch,batch_idx,optimizer_idx):
         # access data
         lr_imgs,hr_imgs = batch
-
-        # perform Fusion warmup step if necessary
-        """
-        if self.check_for_warmup_step(optimizer_idx): # check wether all conditions for warmup are met
-            warmup_loss = self.warmup_step(lr_imgs,optimizer_idx) # get loss  
-            return(warmup_loss)
-        """
 
         # generate SR images, log losses immediately
         sr_imgs = self.forward(lr_imgs)
@@ -203,89 +198,6 @@ class SRGAN_model(pl.LightningModule):
                     [{'scheduler': scheduler_d, 'monitor': self.config.Schedulers.metric, 'reduce_on_plateau': True, 'interval': 'epoch', 'frequency': 1},
                      {'scheduler': scheduler_g, 'monitor': self.config.Schedulers.metric, 'reduce_on_plateau': True, 'interval': 'epoch', 'frequency': 1}],
                 ]
-    
-    
-    """ MISR Fusion Warmup """
-    def check_for_warmup_step(self,optimizer_idx):
-        """
-        Checks whether the training is currently in the warm-up phase for a Multi-image Super-Resolution (MISR) model.
-
-        This function determines if the model is in the warm-up phase based on the current epoch, the optimizer being used, 
-        and specific configurations set for MISR and warm-up. During the warm-up phase, it freezes the parameters of both the 
-        generator and discriminator to prevent their update. Once the warm-up phase is over, it unfreezes these parameters to 
-        allow normal training.
-
-        Args:
-            optimizer_idx (int): The index of the current optimizer. This is used to check if the function is being called for the 
-                                correct optimizer (typically, 0 for the generator).
-
-        Returns:
-            bool: A boolean value indicating whether the model is in the warm-up phase. Returns `True` if in warm-up phase, 
-                otherwise `False`.
-
-        Note:
-            - The function relies on the `self.config` attribute of the class to access configuration settings for MISR and warm-up.
-            - It specifically checks if the `SR_type` is set to 'MISR' and if warm-up is enabled in the configuration.
-            - The number of epochs for the warm-up phase is also retrieved from the configuration (`self.config.Warmup.fusion.epochs`).
-            - During the warm-up phase (when this function returns `True`), the gradients for the generator and discriminator 
-            are disabled by setting `requires_grad` to `False`. Post warm-up, `requires_grad` is set to `True` to resume normal training.
-        """
-        MISR_and_warmup = self.config.SR_type=="MISR" and self.config.Warmup.fusion.enable
-        epoch0_and_optimizer0 = self.current_epoch<self.config.Warmup.fusion.epochs and optimizer_idx==0
-        perform_warmup = MISR_and_warmup and epoch0_and_optimizer0
-
-        # freeze parts of the model depending on wether we're in warmup or not
-        if perform_warmup:
-            for param in self.generator.parameters():
-                param.requires_grad = False
-            for param in self.discriminator.parameters():
-                param.requires_grad = False
-        if not perform_warmup:
-            for param in self.generator.parameters():
-                param.requires_grad = True
-            for param in self.discriminator.parameters():
-                param.requires_grad = True
-
-        return perform_warmup
-    
-    def warmup_step(self,lr_imgs,optimizer_idx):
-        """
-        Performs a warm-up step by fusing low-resolution (LR) images and calculating the loss between the fused image and the 
-        mean of the input LR images.
-
-        This function is part of the warm-up phase in training, where the goal is to align the fused output of the network with 
-        the mean of the input images. This helps in stabilizing the training process in the initial stages.
-
-        Args:
-            lr_imgs (torch.Tensor): A tensor containing a batch of low-resolution images. The tensor is expected to have a shape 
-                                    compatible with the `fusion` module of the model.
-
-        Returns:
-            torch.Tensor: A scalar tensor representing the mean squared error loss between the fused LR image and the mean of 
-                        the input LR images.
-
-        Note:
-            - The function first applies the `fusion` module to the input LR images to get the fused LR image.
-            - It then calculates the mean of the input LR images along the 'views' dimension.
-            - The mean squared error (MSE) loss is computed between the fused image and the mean image.
-            - This loss is used during the warm-up phase of training to guide the fusion process.
-        """
-
-        if optimizer_idx==1: # if we're in the right Optim, return Loss
-            # perform fusion
-            lr_imgs_fused = self.fusion(lr_imgs)
-            # create groud truth (mean of input images)
-            lr_imgs_mean = torch.mean(lr_imgs,dim=1,keepdim=True).squeeze()
-            # calculate loss between fused image and mean of LR images
-            warmup_loss = torch.nn.MSELoss()(lr_imgs_fused,lr_imgs_mean)
-            #  log and return loss
-            self.log("warmup/fusion_warmup",warmup_loss)
-            return(warmup_loss)
-        else:
-            return None
-        
-
-
 
 if __name__=="__main__":       
     m = SRGAN_model()

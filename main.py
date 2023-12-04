@@ -6,7 +6,6 @@ import pytorch_lightning as pl
 from pytorch_lightning import Trainer
 import numpy as np
 import matplotlib.pyplot as plt
-import time
 from omegaconf import OmegaConf
 import wandb
 from torch.utils.data import DataLoader
@@ -22,7 +21,7 @@ from utils.datasets import create_pl_datamodule
 from model.SRGAN import SRGAN_model
 
 
-# __main__ 
+# Run Main Function
 if __name__ == '__main__':
     # required for Multprocessing on Windows
     freeze_support()
@@ -53,7 +52,7 @@ if __name__ == '__main__':
     #############################################################################################################
     # set up logging
     from pytorch_lightning.loggers import WandbLogger
-    wandb_project = "2023_SRGAN"
+    wandb_project = "testing"#"2023_SRGAN"
     wandb_logger = WandbLogger(project=wandb_project,entity="simon-donike")
 
     from pytorch_lightning import loggers as pl_loggers

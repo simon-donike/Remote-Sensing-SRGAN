@@ -11,6 +11,14 @@ import rasterio
 from utils.normalise_s2 import normalise_s2
 
 
+# surpress no georef warnings
+import warnings
+from rasterio.errors import NotGeoreferencedWarning
+
+# Suppress only NotGeoreferencedWarnings
+warnings.filterwarnings("ignore", category=NotGeoreferencedWarning)
+
+
 
 class cv_dataset(Dataset):
     def __init__(self, img_dir,phase="train"):
@@ -205,10 +213,14 @@ class SPOT6(Dataset):
 
         # return LR version if interpoaltion is wanted
         if self.return_type=="interpolated":
-             # ToDo: proper loading of sen2 images, division by 10000, normalization
-            raise UserWarning("interpolated is deprecated - Not properly implemented")
             lr = torch.nn.functional.interpolate(hr.unsqueeze(0),size=(75,75),mode="bilinear",antialias=True).squeeze(0)
-            lr,hr = (lr*2)-1,(hr*2)-1
+            lr = normalise_s2(lr,stage="norm")
+            hr = normalise_s2(hr,stage="norm")
+            if self.sen2_amount>1:
+                # stack tensor x times to simulate MISR
+                lr = torch.stack([lr]*self.sen2_amount)
+                #lr = lr.view(self.sen2_amount*lr.shape[1], lr.shape[2], lr.shape[3]) # goes from 4,3,75,75 to 12,75,75
+                assert lr.shape[0]==self.sen2_amount*3
             return lr,hr
         
                 # return LR version if interpoaltion is wanted
@@ -231,6 +243,13 @@ class SPOT6(Dataset):
                 sigma = random.uniform(0.4,0.6)
                 gaussian_blur = transforms.GaussianBlur(3, sigma=sigma)
                 lr = gaussian_blur(lr)
+
+            # if more wanted, stack fake LR images
+            if self.sen2_amount>1:
+                # stack tensor x times to simulate MISR
+                lr = torch.stack([lr]*self.sen2_amount)
+                #lr = lr.view(self.sen2_amount*lr.shape[1], lr.shape[2], lr.shape[3]) # goes from 4,3,75,75 to 12,75,75
+                #assert lr.shape[0]==self.sen2_amount*3
             return lr,hr
         
 
@@ -253,48 +272,29 @@ class SPOT6(Dataset):
             hr = normalise_s2(hr,stage="norm")
             
             # last check to ensure dimensions are correct
-            if hr.shape!= torch.Size([3, 300, 300]):
-                hr = torch.nn.functional.interpolate(hr.unsqueeze(0), size=(300, 300), mode='bilinear', align_corners=True,antialias=True).squeeze(0)
-            if lr.shape!= torch.Size([self.sen2_amount*3, 75, 75]):
-                lr = torch.nn.functional.interpolate(lr.unsqueeze(0), size=(75, 75), mode='bilinear', align_corners=True,antialias=True).squeeze(0)
+            #if hr.shape!= torch.Size([3, 300, 300]):
+            #    hr = torch.nn.functional.interpolate(hr.unsqueeze(0), size=(300, 300), mode='bilinear', align_corners=True,antialias=True).squeeze(0)
+            #if lr.shape!= torch.Size([self.sen2_amount*3, 75, 75]):
+            #    lr = torch.nn.functional.interpolate(lr.unsqueeze(0), size=(75, 75), mode='bilinear', align_corners=True,antialias=True).squeeze(0)
             
             return lr,hr
         
         # return None if no valid selection has been made
         return None,None
     
-    
-if __name__ == "__main__":
-    print("Dataset: saving test image to disk...")
-    ds = SPOT6('E:/thesis_paper/data/' ,return_type='cross_sensor',phase="train",sen2_amount=1)
-    lr,hr = ds.__getitem__(30)
-
-
-    # save first image of tensor to disk
-    import matplotlib.pyplot as plt
-    lr,hr = ds.__getitem__(45)
-    lr = normalise_s2(lr,stage="denorm")
-    hr = normalise_s2(hr,stage="denorm")
-    from utils.sen2_stretch import sen2_stretch
-    lr = sen2_stretch(lr) 
-    hr = sen2_stretch(hr) 
-    # plot two images
-    fig,ax = plt.subplots(1,2)
-    ax[0].imshow(hr.permute(1,2,0).numpy())
-    ax[1].imshow(lr.permute(1,2,0).numpy())
-    plt.savefig("test_image.png")
-    plt.close()
-
-
 
 def dataset_selector(config):
     if config.Data.dataset_type=="cv":
         # train
         ds_train = cv_dataset(config.Data.data_dir,phase="train")
-        dl_train = DataLoader(ds_train, batch_size=config.Data.train_batch_size, shuffle=True,num_workers=config.Data.num_workers,prefetch_factor=config.Data.prefetch_factor,drop_last=True)
+        dl_train = DataLoader(ds_train, batch_size=config.Data.train_batch_size, shuffle=True,
+                              num_workers=config.Data.num_workers,prefetch_factor=config.Data.prefetch_factor,
+                              drop_last=True,sen2_amount=config.Data.sen2_amount)
         # val
         ds_val = cv_dataset(config.Data.data_dir,phase="val")
-        dl_val = DataLoader(ds_val, batch_size=config.Data.val_batch_size, shuffle=False,num_workers=config.Data.num_workers,prefetch_factor=config.Data.prefetch_factor,drop_last=True)
+        dl_val = DataLoader(ds_val, batch_size=config.Data.val_batch_size, shuffle=False,
+                            num_workers=config.Data.num_workers,prefetch_factor=config.Data.prefetch_factor,
+                            drop_last=True,sen2_amount=config.Data.sen2_amount)
         # get datamodule
         pl_datamodule = create_pl_datamodule(dl_train, dl_val)
         return(pl_datamodule)
@@ -331,3 +331,24 @@ def create_pl_datamodule(train_loader,val_loader):
     datamodule = pl_datamodule(train_loader,val_loader)
     return(datamodule)
 
+
+if __name__ == "__main__":
+    print("Dataset: saving test image to disk...")
+    ds = SPOT6('E:/thesis_paper/data/' ,return_type='interpolated_matched',phase="train",sen2_amount=4)
+    lr,hr = ds.__getitem__(30)
+
+
+    # save first image of tensor to disk
+    import matplotlib.pyplot as plt
+    lr,hr = ds.__getitem__(45)
+    lr = normalise_s2(lr,stage="denorm")
+    hr = normalise_s2(hr,stage="denorm")
+    from utils.sen2_stretch import sen2_stretch
+    lr = sen2_stretch(lr) 
+    hr = sen2_stretch(hr) 
+    # plot two images
+    fig,ax = plt.subplots(1,2)
+    ax[0].imshow(hr.permute(1,2,0).numpy())
+    ax[1].imshow(lr.permute(1,2,0).numpy())
+    plt.savefig("test_image.png")
+    plt.close()

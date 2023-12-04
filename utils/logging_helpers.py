@@ -59,3 +59,40 @@ def plot_tensors(lr, sr, hr,title="Train"):
 
     # return PIL figure
     return pil_image
+
+def plot_fusion(lr,enc,hr):
+
+    # prepare tensors
+    enc = normalise_s2(enc,stage="denorm")
+    lr = normalise_s2(lr,stage="denorm")
+    hr = normalise_s2(hr,stage="denorm")
+    lr = sen2_stretch(lr)
+    enc = sen2_stretch(enc)
+    hr = sen2_stretch(hr)
+    lr, enc, hr = torch.clamp(lr,0,1), torch.clamp(enc,0,1), torch.clamp(hr,0,1)
+
+    # create fig and prepare tensors
+    lr,enc,hr = lr[0],enc[0],hr[0]
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    lr = lr.detach().cpu().numpy().transpose(1, 2, 0)
+    enc = enc.detach().cpu().numpy().transpose(1, 2, 0)
+    hr = hr.detach().cpu().numpy().transpose(1, 2, 0)
+
+    # plot images
+    axes[0].imshow(lr)
+    axes[0].axis('off')
+    axes[0].set_title('LR')
+    axes[1].imshow(enc)
+    axes[1].axis('off')
+    axes[1].set_title('Fused Image')
+    axes[2].imshow(hr)
+    axes[2].axis('off')
+    axes[2].set_title('HR')
+
+    # save and return image
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+    pil_image = Image.open(buf)
+    plt.close()
+    return pil_image

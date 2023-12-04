@@ -1,21 +1,33 @@
+# General Settings
+SR_type: 'MISR' # [SISR, MISR]
+# dont forget to also set the sen2_amount
+
+# Data Settings
+Data:
+  # Loader Settings
+  train_batch_size: 32 #12
+  val_batch_size: 8
+  num_workers: 6
+  prefetch_factor: 4 #2
+
+  # Detailed Dataset Setttings
+  dataset_type: 'SPOT6' # ['cv', 'SPOT6']
+  data_dir: 'E:/thesis_paper/data/' # ['data/openImages/',''E:/thesis_paper/data/']
+  sen2_amount: 4
+  spectral_matching: 'histogram'
+  return_type: 'interpolated_matched' #interpolated_matched
+
+
+# Model, Loss, Training  Settings
 Model:
   load_checkpoint: True
   ckpt_path: 'logs\curated_ckpts\pretrained_SPOT6_int_blur_histMatched.ckpt'
 
-Data:
-  train_batch_size: 12
-  val_batch_size: 8
-  num_workers: 6
-  prefetch_factor: 2
-
-  # SPOT6 special settings
-  dataset_type: 'SPOT6' # ['cv', 'SPOT6']
-  data_dir: 'E:/thesis_paper/data/' # ['data/openImages/',''E:/thesis_paper/data/']
-  sen2_amount: 1
-  spectral_matching: 'histogram'
-  return_type: 'cross_sensor' #interpolated_matched
-
-
+Warmup:
+  fusion: # train fusion in isolation previously
+    enable: True
+    epochs: 1
+    lr: 1e-4
 
 Generator:
   large_kernel_size: 9

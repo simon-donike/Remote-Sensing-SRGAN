@@ -11,6 +11,7 @@ import wandb
 from utils.calculate_metrics import calculate_metrics
 from utils.logging_helpers import plot_tensors
 from utils.logging_helpers import plot_fusion
+from utils.logging_helpers import misr_plot
 from utils.normalise_s2 import normalise_s2
 
 
@@ -131,8 +132,8 @@ class SRGAN_model(pl.LightningModule):
         if self.config.SR_type=="MISR":
             # get fused image
             lr_fused = self.fusion(lr_imgs)
-            # keep only first image
-            lr_imgs = lr_imgs[:,0,:,:,:]
+            # keep only first image for visualization purposes
+            lr_imgs_vis = lr_imgs[:,0,:,:,:]
 
         """ 2. Log Generator Metrics """
         # log image metrics
@@ -146,7 +147,7 @@ class SRGAN_model(pl.LightningModule):
         # only perform image logging for n pics, not all 200
         if batch_idx<self.config.Logging.num_val_images:
             # log Stadard image visualizations  
-            plot_lr_img = torch.clone(lr_imgs)   # deep copy to avoid graph problems
+            plot_lr_img = torch.clone(lr_imgs_vis)   # deep copy to avoid graph problems
             plot_hr_img = torch.clone(hr_imgs)  
             plot_sr_img = torch.clone(sr_imgs)  
             val_img = plot_tensors(plot_lr_img,plot_sr_img,plot_hr_img,title="Val")
@@ -158,9 +159,13 @@ class SRGAN_model(pl.LightningModule):
                 # create fusion image
                 plot_lr_img = torch.clone(lr_fused)
                 # plot images
-                plot_fusion_img = plot_fusion(torch.clone(lr_imgs),torch.clone(lr_fused),torch.clone(hr_imgs))
+                plot_fusion_img = plot_fusion(torch.clone(lr_imgs_vis),torch.clone(lr_fused),torch.clone(hr_imgs))
                 # log fusion image to logger
                 self.logger.experiment.log({"Fusion":  wandb.Image(plot_fusion_img)})
+
+                # plot SR plus grid
+                misr_img = misr_plot(torch.clone(lr_imgs),torch.clone(sr_imgs) ,torch.clone(hr_imgs))
+                self.logger.experiment.log({"MISR_val":  wandb.Image(misr_img)})
            
 
         """ 3. Log Discriminator metrics """

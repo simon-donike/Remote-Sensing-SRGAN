@@ -170,16 +170,21 @@ tbd
 #### Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/7ldju4hr)
 #### Example Validation Image
-Still training...  
-![Experiment 7 Example Image](resources/misr1.png)
+Even though noise was added, good results form the syhntetic MISR revisits. Especially visible in this run is the problematic SR of urban images, where more rural textures are pasted especially in suburban areas.
+![Experiment 7 Example Image](resources/synth_MISR.png)
 
 ## Experiment 3: MISR on real Sentinel-2 time series
 #### Description
-A real Sentinel-2time series is used, with the same dataset modifications as in the SISR runs (normalized according to Sen-2 conventional stretch, time-delta of 1st image >3 removed, stratified by land use).
+A real Sentinel-2time series is used, with the same dataset modifications as in the SISR runs (normalized according to Sen-2 conventional stretch, time-delta of 1st image >3 removed, stratified by land use). Continued training on the checkpoint from MISR experiment 2.
 #### Results
-tbd
+Currently Training!
+First Impressions: Fusion does not work as intended, since now it has to deal with geographically shifted time series images. Since the fusion isn't ideal, the output SR is blurred.
 #### Tracking
-tracking via this WandB run: [Run]()
+Currently Training!  
+tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/7n38sxlr)
 #### Example Validation Image
-Still training...  
-![Experiment 7 Example Image]()
+Currently Training!  
+Fusion first impression:  
+![Experiment 7 Example Image](resources/fusion_misr_real_data.png)  
+SR First Impression:  
+![Experiment 7 Example Image](resources/fusion_sr_transfer.png)  

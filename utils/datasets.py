@@ -9,6 +9,7 @@ import PIL
 import pandas as pd
 import rasterio
 from utils.normalise_s2 import normalise_s2
+import torchvision.transforms as transforms
 
 
 # surpress no georef warnings
@@ -239,7 +240,6 @@ class SPOT6(Dataset):
             # apply gaussian blur to lr version
             apply_blur=False
             if apply_blur:
-                import torchvision.transforms as transforms
                 sigma = random.uniform(0.4,0.6)
                 gaussian_blur = transforms.GaussianBlur(3, sigma=sigma)
                 lr = gaussian_blur(lr)
@@ -268,20 +268,21 @@ class SPOT6(Dataset):
             
             # perform spatial matching to match each LR to HR - DEACTIVATED FOR NOW
             #lr = [self.spatial_matching(lr_im,hr) for lr_im in lr]
+
+            # last check to ensure dimensions are correct
+            if hr.shape!= torch.Size([3, 300, 300]):
+                hr = torch.nn.functional.interpolate(hr.unsqueeze(0), size=(300, 300), mode='bilinear', align_corners=True,antialias=True).squeeze(0)
+            for v,lr_ in enumerate(lr):
+                if lr_.shape!= torch.Size([3, 75, 75]):
+                    lr_ = torch.nn.functional.interpolate(lr_.unsqueeze(0), size=(75, 75), mode='bilinear', align_corners=True,antialias=True).squeeze(0)
+                    lr[v] = lr_
             
-            # stack lr to batch dimensions
+            # stack tensors
             lr = torch.stack(lr)
-            lr = lr.view(-1, lr.size(2), lr.size(3))
 
             # perform normalization
             lr = normalise_s2(lr,stage="norm")
             hr = normalise_s2(hr,stage="norm")
-            
-            # last check to ensure dimensions are correct
-            #if hr.shape!= torch.Size([3, 300, 300]):
-            #    hr = torch.nn.functional.interpolate(hr.unsqueeze(0), size=(300, 300), mode='bilinear', align_corners=True,antialias=True).squeeze(0)
-            #if lr.shape!= torch.Size([self.sen2_amount*3, 75, 75]):
-            #    lr = torch.nn.functional.interpolate(lr.unsqueeze(0), size=(75, 75), mode='bilinear', align_corners=True,antialias=True).squeeze(0)
             
             return lr,hr
         
@@ -340,7 +341,7 @@ def create_pl_datamodule(train_loader,val_loader):
 
 if __name__ == "__main__":
     print("Dataset: saving test image to disk...")
-    ds = SPOT6('E:/thesis_paper/data/' ,return_type='interpolated_matched',phase="train",sen2_amount=4)
+    ds = SPOT6('E:/thesis_paper/data/' ,return_type='cross_sensor',phase="train",sen2_amount=4)
     lr,hr = ds.__getitem__(31)
 
 
@@ -352,8 +353,8 @@ if __name__ == "__main__":
     from utils.sen2_stretch import sen2_stretch
     lr = sen2_stretch(lr) 
     hr = sen2_stretch(hr)
-    if len(lr.shape)==4:
-        lr = lr[0,:,:,:] 
+    if lr.shape[0]!=3:
+        lr = lr[:3,:,:] 
     # plot two images
     fig,ax = plt.subplots(1,2)
     ax[0].imshow(hr.permute(1,2,0).numpy()*2)

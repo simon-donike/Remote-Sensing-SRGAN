@@ -15,14 +15,14 @@ Data:
   data_dir: 'E:/thesis_paper/data/' # ['data/openImages/',''E:/thesis_paper/data/']
   sen2_amount: 4
   spectral_matching: 'histogram'
-  return_type: 'interpolated_matched' #interpolated_matched
+  return_type: 'cross_sensor' #interpolated_matched
 
 
 # Model, Loss, Training  Settings
 Model:
   load_checkpoint: True
-  ckpt_path: 'logs\curated_ckpts\pretrained_SPOT6_int_blur_histMatched.ckpt'
-  load_fusion_checkpoint: True
+  ckpt_path: 'logs\curated_ckpts\pretrained_MISR_SPOT6synt.ckpt'
+  load_fusion_checkpoint: False
   fusion_ckpt_path: 'logs\curated_ckpts\pretrained_Fusion.ckpt'
 Warmup:
   fusion: # train fusion in isolation previously

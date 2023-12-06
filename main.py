@@ -1,26 +1,13 @@
 # Package Imports
 import torch
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-import torchvision
-import pytorch_lightning as pl
 from pytorch_lightning import Trainer
-import numpy as np
-import matplotlib.pyplot as plt
 from omegaconf import OmegaConf
 import wandb
-from torch.utils.data import DataLoader
-import datetime
-import os
+import os, datetime
 from multiprocessing import freeze_support
 
 # local imports
-from utils.calculate_metrics import calculate_metrics
-from utils.logging_helpers import plot_tensors
-from utils.datasets import cv_dataset
-from utils.datasets import create_pl_datamodule
 from model.SRGAN import SRGAN_model
-from model.fusion import RecursiveNet_pl
-
 
 # Run Main Function
 if __name__ == '__main__':
@@ -103,4 +90,6 @@ if __name__ == '__main__':
     trainer.fit(model, datamodule=pl_datamodule)
     wandb.finish()
     writer.close()
+
+
 

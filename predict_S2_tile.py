@@ -32,7 +32,8 @@ if __name__ == '__main__':
     model = model.to(device)
 
     #############################################################################################################
-    """ Set up SR-S2 utils """
+    """ Set up SR-S2 utils - start SR """
+    #############################################################################################################
     # get SR2 utils and create
     from utils.sr_s2_utils.main import windowed_SR_and_saving
     folder_path = "data/sen2_tiles/S2A_MSIL2A_20230729T100031_N0509_R122_T33TUG_20230729T134559.SAFE/"

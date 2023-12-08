@@ -30,7 +30,7 @@ if __name__ == '__main__':
 
 
     #############################################################################################################
-    " GET DATA "
+    """ GET DATA """
     #############################################################################################################
     # create dataloaders via dataset_selector -> config -> class selection -> convert to pl_module
     from utils.datasets import dataset_selector
@@ -90,6 +90,5 @@ if __name__ == '__main__':
     trainer.fit(model, datamodule=pl_datamodule)
     wandb.finish()
     writer.close()
-
 
 

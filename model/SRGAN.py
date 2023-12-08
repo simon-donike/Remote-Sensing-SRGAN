@@ -13,6 +13,7 @@ from utils.logging_helpers import plot_tensors
 from utils.logging_helpers import plot_fusion
 from utils.logging_helpers import misr_plot
 from utils.normalise_s2 import normalise_s2
+from utils.dataloader_utils import histogram as histogram_match
 
 
 #############################################################################################################
@@ -21,11 +22,11 @@ from utils.normalise_s2 import normalise_s2
 
 class SRGAN_model(pl.LightningModule):
 
-    def __init__(self, config_file="config.yaml"):
+    def __init__(self, config_file_path="config.yaml"):
         super(SRGAN_model, self).__init__()
 
         # get config file
-        self.config = OmegaConf.load("config.yaml")
+        self.config = OmegaConf.load(config_file_path)
 
         """ IMPORT MODELS """
         # if MISR is wanted, instantiate fusion net
@@ -62,6 +63,7 @@ class SRGAN_model(pl.LightningModule):
         self.content_loss_criterion = torch.nn.MSELoss()
         self.adversarial_loss_criterion = torch.nn.BCEWithLogitsLoss()
 
+
     def forward(self,lr_imgs):
         # if MISR, perform Fusion first
         if self.config.SR_type=="MISR":
@@ -69,6 +71,36 @@ class SRGAN_model(pl.LightningModule):
         # perform generative Step
         sr_imgs = self.generator(lr_imgs)
         return(sr_imgs)
+    
+
+    @torch.no_grad()
+    def predict(self,lr_imgs):
+        """
+        This function is for the prediction in the Deployment stage, therefore
+        the normalization and denormalization needs to happen here.
+        Input:
+            - unnormalized lLR imgs
+        Output:
+            - normalized SR images
+        Info:
+            - This function currently only performs SISR SR
+        """
+
+        # move to GPU if possible
+        lr_imgs = lr_imgs.to(self.device)
+        # normalize images
+        lr_imgs = normalise_s2(lr_imgs,stage="norm")
+        # preform SR
+        with torch.no_grad():
+            sr_imgs = self.generator(lr_imgs)
+        # histogram match to also encoded LR images
+        sr_imgs = histogram_match(lr_imgs,sr_imgs)
+        # denormalize images
+        sr_imgs = normalise_s2(sr_imgs,stage="denorm")
+        # move to CPU
+        sr_imgs = sr_imgs.cpu().detach()
+        return sr_imgs
+
 
     def training_step(self,batch,batch_idx,optimizer_idx):
         # access data
@@ -205,4 +237,4 @@ class SRGAN_model(pl.LightningModule):
                 ]
 
 if __name__=="__main__":       
-    m = SRGAN_model()
+    model = SRGAN_model(config_file_path="config.yaml")

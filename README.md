@@ -182,14 +182,15 @@ Even though noise was added, good results form the syhntetic MISR revisits. Espe
 #### Description
 A real Sentinel-2time series is used, with the same dataset modifications as in the SISR runs (normalized according to Sen-2 conventional stretch, time-delta of 1st image >3 removed, stratified by land use). Continued training on the checkpoint from MISR experiment 2.
 #### Results
-Currently Training!
+Description coming soon.  
 First Impressions: Fusion does not work as intended, since now it has to deal with geographically shifted time series images. Since the fusion isn't ideal, the output SR is blurred.
-#### Tracking
-Currently Training!  
+#### Tracking  
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/7n38sxlr)
 #### Example Validation Image
-Currently Training!  
-Fusion first impression:  
-![Experiment 7 Example Image](resources/fusion_misr_real_data.png)  
-SR First Impression:  
-![Experiment 7 Example Image](resources/fusion_sr_transfer.png)  
+
+Visualization of Fusion image, which is what is actually inputted into the SRGAN model  
+![Experiment 7 Example Image](resources/MISR_realData_Fusion_res.png)  
+Visualisation of LR time series, SR result, and HR reference.  
+![Experiment 7 Example Image](resources/misr_readData_fusion_SR.png)  
+Result.  
+![Experiment 7 Example Image](resources/MSIR_realData_SR.png) 

@@ -44,8 +44,6 @@ Download the pretrained weights [here](https://drive.google.com/drive/folders/1R
 Follow all runs on [WandB](https://wandb.ai/simon-donike/2023_SRGAN).
 
 # Experiments: SISR
-<details>
-  <summary>Experiment 1: Oxford Dogs Dataset</summary>
 ## Experiment 1: Oxford Dogs Dataset
 #### Description
 Initial test to confirm the capabilities of the SRGAN model. performed on a small dataset for fast iteration.
@@ -60,7 +58,6 @@ Good results given the small dataset. Overfitting due to low variance in dataset
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/sk01q4zl)
 #### Example Validation Image
 ![Experiment 1 Example Image](resources/oxDogs_val.png)
-</details>
 
 ## Experiment 2: Standard OpenAI CV dataset
 #### Description

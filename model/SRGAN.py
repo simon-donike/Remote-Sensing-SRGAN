@@ -22,11 +22,14 @@ from utils.dataloader_utils import histogram as histogram_match
 
 class SRGAN_model(pl.LightningModule):
 
-    def __init__(self, config_file_path="config.yaml"):
+    def __init__(self, config_dict):
         super(SRGAN_model, self).__init__()
 
         # get config file
-        self.config = OmegaConf.load(config_file_path)
+        if type(config_dict)==str:
+            self.config = OmegaConf.load(config_dict)
+        else:
+            self.config = config_dict
 
         """ IMPORT MODELS """
         # if MISR is wanted, instantiate fusion net
@@ -37,20 +40,25 @@ class SRGAN_model(pl.LightningModule):
             if self.config.Model.load_fusion_checkpoint:
                 self.fusion = RecursiveNet_pl.load_from_checkpoint(self.config.Model.fusion_ckpt_path, strict=False)
 
+        """ Import Config Settings """
+        self.bands = self.config.bands
+
         # Generator
         from model.model_blocks import Generator
         self.generator = Generator(large_kernel_size=self.config.Generator.large_kernel_size,
                         small_kernel_size=self.config.Generator.small_kernel_size,
                         n_channels=self.config.Generator.n_channels,
                         n_blocks=self.config.Generator.n_blocks,
-                        scaling_factor=self.config.Generator.scaling_factor)
+                        scaling_factor=self.config.Generator.scaling_factor,
+                        bands=self.bands)
         
         # Discriminator
         from model.model_blocks import Discriminator
         self.discriminator = Discriminator(kernel_size=self.config.Discriminator.kernel_size,
                             n_channels=self.config.Discriminator.n_channels,
                             n_blocks=self.config.Discriminator.n_blocks,
-                            fc_size=self.config.Discriminator.fc_size)
+                            fc_size=self.config.Discriminator.fc_size,
+                            bands=self.bands)
         
         # VGG for encoding
         from model.model_blocks import TruncatedVGG19
@@ -74,7 +82,7 @@ class SRGAN_model(pl.LightningModule):
     
 
     @torch.no_grad()
-    def predict(self,lr_imgs):
+    def predict(self,lr_imgs,normalize=True):
         """
         This function is for the prediction in the Deployment stage, therefore
         the normalization and denormalization needs to happen here.
@@ -89,14 +97,16 @@ class SRGAN_model(pl.LightningModule):
         # move to GPU if possible
         lr_imgs = lr_imgs.to(self.device)
         # normalize images
-        lr_imgs = normalise_s2(lr_imgs,stage="norm")
+        if normalize:
+            lr_imgs = normalise_s2(lr_imgs,stage="norm")
         # preform SR
         with torch.no_grad():
             sr_imgs = self.generator(lr_imgs)
         # histogram match to also encoded LR images
         sr_imgs = histogram_match(lr_imgs,sr_imgs)
         # denormalize images
-        sr_imgs = normalise_s2(sr_imgs,stage="denorm")
+        if normalize:
+            sr_imgs = normalise_s2(sr_imgs,stage="denorm")
         # move to CPU
         sr_imgs = sr_imgs.cpu().detach()
         return sr_imgs
@@ -134,10 +144,23 @@ class SRGAN_model(pl.LightningModule):
             
             """ 1. Get VGG space loss """
             # encode images
-            sr_imgs_in_vgg_space = self.truncated_vgg19(sr_imgs)
-            hr_imgs_in_vgg_space = self.truncated_vgg19(hr_imgs).detach()  # detached because they're constant, targets
-            # Calculate the Perceptual loss between VGG encoded images to receive content loss
-            content_loss = self.content_loss_criterion(sr_imgs_in_vgg_space, hr_imgs_in_vgg_space)
+
+            # if >3 bands, randomly chose 3 bands for VGG comparison
+            if lr_imgs.shape[1]>3:
+                sr_imgs_3,hr_imgs_3 = sr_imgs.clone(),hr_imgs.clone()
+                band_idxs = np.random.choice(lr_imgs.shape[1], 3, replace=False)
+                sr_imgs_3,hr_imgs_3 = sr_imgs_3[:,band_idxs,:,:,:],hr_imgs_3[:,band_idxs,:,:,:]
+                # calc loss
+                sr_imgs_in_vgg_space = self.truncated_vgg19(sr_imgs_3)
+                hr_imgs_in_vgg_space = self.truncated_vgg19(hr_imgs_3).detach()  # detached because they're constant, targets
+                # Calculate the Perceptual loss between VGG encoded images to receive content loss
+                content_loss = self.content_loss_criterion(sr_imgs_in_vgg_space, hr_imgs_in_vgg_space)
+            else:
+                # calc loss
+                sr_imgs_in_vgg_space = self.truncated_vgg19(sr_imgs)
+                hr_imgs_in_vgg_space = self.truncated_vgg19(hr_imgs).detach()  # detached because they're constant, targets
+                # Calculate the Perceptual loss between VGG encoded images to receive content loss
+                content_loss = self.content_loss_criterion(sr_imgs_in_vgg_space, hr_imgs_in_vgg_space)
             
             """ 2. Get Discriminator Opinion and loss """
             # run discriminator and get loss between pred labels and true labels
@@ -158,7 +181,9 @@ class SRGAN_model(pl.LightningModule):
         
         """ 1. Extract and Predict """
         lr_imgs,hr_imgs = batch
-        sr_imgs = self.forward(lr_imgs)
+        #sr_imgs = self.forward(lr_imgs) # TODO: changed this to involve the predict step for reprodicibility, potentially change back
+        # TODO: take care of normalization stuff, where its normalized, where not, and how that interacts with the predict and logging functionalities
+        sr_imgs = self.predict(lr_imgs)
 
         # if we're in MISR, keep only 1 image to perform visualization and checks. Keep Fused image for inspection
         if self.config.SR_type=="MISR":
@@ -237,4 +262,5 @@ class SRGAN_model(pl.LightningModule):
                 ]
 
 if __name__=="__main__":       
-    model = SRGAN_model(config_file_path="config.yaml")
+    config = OmegaConf.load("config.yaml")
+    model = SRGAN_model(config)

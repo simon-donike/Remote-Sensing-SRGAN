@@ -133,7 +133,7 @@ class SRResNet(nn.Module):
     The SRResNet, as defined in the paper.
     """
 
-    def __init__(self, large_kernel_size=9, small_kernel_size=3, n_channels=64, n_blocks=16, scaling_factor=4):
+    def __init__(self, large_kernel_size=9, small_kernel_size=3, n_channels=64, n_blocks=16, scaling_factor=4, bands=3):
         """
         :param large_kernel_size: kernel size of the first and last convolutions which transform the inputs and outputs
         :param small_kernel_size: kernel size of all convolutions in-between, i.e. those in the residual and subpixel convolutional blocks
@@ -148,7 +148,7 @@ class SRResNet(nn.Module):
         assert scaling_factor in {2, 4, 8}, "The scaling factor must be 2, 4, or 8!"
 
         # The first convolutional block
-        self.conv_block1 = ConvolutionalBlock(in_channels=3, out_channels=n_channels, kernel_size=large_kernel_size,
+        self.conv_block1 = ConvolutionalBlock(in_channels=bands, out_channels=n_channels, kernel_size=large_kernel_size,
                                               batch_norm=False, activation='PReLu')
 
         # A sequence of n_blocks residual blocks, each containing a skip-connection across the block
@@ -166,7 +166,7 @@ class SRResNet(nn.Module):
             *[SubPixelConvolutionalBlock(kernel_size=small_kernel_size, n_channels=n_channels, scaling_factor=2) for i
               in range(n_subpixel_convolution_blocks)])
 
-        self.conv_block3 = ConvolutionalBlock(in_channels=n_channels, out_channels=3, kernel_size=large_kernel_size,
+        self.conv_block3 = ConvolutionalBlock(in_channels=n_channels, out_channels=bands, kernel_size=large_kernel_size,
                                               batch_norm=False, activation='Tanh')
 
     def forward(self, lr_imgs):
@@ -205,7 +205,7 @@ class Generator(nn.Module):
     The generator in the SRGAN, as defined in the paper. Architecture identical to the SRResNet.
     """
 
-    def __init__(self, large_kernel_size=9, small_kernel_size=3, n_channels=64, n_blocks=16, scaling_factor=4):
+    def __init__(self, large_kernel_size=9, small_kernel_size=3, n_channels=64, n_blocks=16, scaling_factor=4, bands=3):
         """
         :param large_kernel_size: kernel size of the first and last convolutions which transform the inputs and outputs
         :param small_kernel_size: kernel size of all convolutions in-between, i.e. those in the residual and subpixel convolutional blocks
@@ -214,10 +214,11 @@ class Generator(nn.Module):
         :param scaling_factor: factor to scale input images by (along both dimensions) in the subpixel convolutional block
         """
         super(Generator, self).__init__()
+        self.bands = bands
 
         # The generator is simply an SRResNet, as above
         self.net = SRResNet(large_kernel_size=large_kernel_size, small_kernel_size=small_kernel_size,
-                            n_channels=n_channels, n_blocks=n_blocks, scaling_factor=scaling_factor)
+                            n_channels=n_channels, n_blocks=n_blocks, scaling_factor=scaling_factor, bands=self.bands)
 
     def initialize_with_srresnet(self, srresnet_checkpoint):
         """
@@ -247,7 +248,7 @@ class Discriminator(nn.Module):
     The discriminator in the SRGAN, as defined in the paper.
     """
 
-    def __init__(self, kernel_size=3, n_channels=64, n_blocks=8, fc_size=1024):
+    def __init__(self, kernel_size=3, n_channels=64, n_blocks=8, fc_size=1024, bands=3):
         """
         :param kernel_size: kernel size in all convolutional blocks
         :param n_channels: number of output channels in the first convolutional block, after which it is doubled in every 2nd block thereafter
@@ -256,7 +257,7 @@ class Discriminator(nn.Module):
         """
         super(Discriminator, self).__init__()
 
-        in_channels = 3
+        in_channels = bands
 
         # A series of convolutional blocks
         # The first, third, fifth (and so on) convolutional blocks increase the number of channels but retain image size

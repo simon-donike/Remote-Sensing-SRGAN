@@ -17,7 +17,7 @@ if __name__ == '__main__':
     # General
     torch.set_float32_matmul_precision('medium')
     # load config
-    config = OmegaConf.load("config.yaml")
+    config = OmegaConf.load("config_4band.yaml")
 
     #############################################################################################################
     " LOAD MODEL "
@@ -26,7 +26,7 @@ if __name__ == '__main__':
     if config.Model.load_checkpoint:
         model = SRGAN_model.load_from_checkpoint(config.Model.ckpt_path, strict=False)
     else:
-        model = SRGAN_model()
+        model = SRGAN_model(config)
 
 
     #############################################################################################################

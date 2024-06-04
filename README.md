@@ -1,3 +1,6 @@
+# Update
+Currently including 4-band SR. When it's finished, it will be merged into main. README to be updated.
+
 # Remote Sensing SRGAN - General Info
 This repository is the supplemental code of my [master's thesis](https://www.donike.net/m-sc-thesis-deep-super-resolution-of-sentinel-2-time-series/), which has been fundamentally revisited and improved. The SRGAN follows the 2017 paper by [Ledig et al.](https://arxiv.org/abs/1609.04802v5) for the fundamental GAN model, the multi-temporal fusion is inspired by HighResNet by [Deudon et al.](https://arxiv.org/abs/2002.06460)
 #### Synopsis

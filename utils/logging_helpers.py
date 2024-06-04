@@ -19,10 +19,10 @@ def plot_tensors(lr, sr, hr,title="Train"):
     lr = sen2_stretch(lr)
     sr = sen2_stretch(sr)
     hr = sen2_stretch(hr)
-    lr, sr, hr = torch.clamp(lr,0,1), torch.clamp(sr,0,1), torch.clamp(hr,0,1)
-
 
     B, _, W, H = lr.shape  # Assuming all tensors have the same shape except for possible W and H
+    if B>5: # Restrict to Max 5 images
+        B = 5
     
     fixed_width = 15
     variable_height = (15/3) * B
@@ -52,7 +52,7 @@ def plot_tensors(lr, sr, hr,title="Train"):
      # Create a PIL image from the BytesIO object
     plt.title(title)
     buf = io.BytesIO()
-    plt.savefig(buf, format='png')
+    plt.savefig(buf, format='png',dpi=150)
     buf.seek(0)
     pil_image = Image.open(buf)
     plt.close()
@@ -139,10 +139,4 @@ def misr_plot(lr,sr,hr):
     pil_image = Image.open(buf)
     plt.close()
     return pil_image
-
-#lr = torch.rand(1,12,300,300)
-#sr = torch.rand(1,3,300,300)
-#hr = torch.rand(1,3,300,300)
-#misr_plot(lr,sr,hr)
-
 

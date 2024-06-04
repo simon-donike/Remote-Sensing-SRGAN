@@ -9,6 +9,9 @@ from multiprocessing import freeze_support
 # local imports
 from model.SRGAN import SRGAN_model
 
+# Set GPU
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+
 # Run Main Function
 if __name__ == '__main__':
     # required for Multprocessing on Windows
@@ -36,12 +39,13 @@ if __name__ == '__main__':
     from utils.datasets import dataset_selector
     pl_datamodule = dataset_selector(config)
 
+
     #############################################################################################################
     """ Configure Trainer """
     #############################################################################################################
     # set up logging
     from pytorch_lightning.loggers import WandbLogger
-    wandb_project = "2023_SRGAN" #"testing"
+    wandb_project = "2023_SRGAN_4band" #"testing"
     wandb_logger = WandbLogger(project=wandb_project,entity="simon-donike")
 
     from pytorch_lightning import loggers as pl_loggers
@@ -68,15 +72,16 @@ if __name__ == '__main__':
     early_stop_callback = EarlyStopping(monitor="val/L1", min_delta=0.00, patience=250, verbose=True,
                                     mode="min",check_finite=True) # patience in epochs
 
+
     #############################################################################################################
     """ Start Training """
     #############################################################################################################
     
     trainer = Trainer(accelerator='cuda',
-                    devices=[0],
+                    devices=-1,
                     check_val_every_n_epoch=1,
-                    val_check_interval=0.5,
-                    limit_val_batches=250,
+                    val_check_interval=0.25,
+                    limit_val_batches=10,
                     max_epochs=99999,
                     logger=[ 
                                 wandb_logger,

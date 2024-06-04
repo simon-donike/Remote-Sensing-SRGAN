@@ -35,7 +35,7 @@ def normalize(sen2,spot6,sen2_amount=1):
 def histogram(sen2,spot6,sen2_amount=None):
     # https://scikit-image.org/docs/dev/api/skimage.exposure.html#skimage.exposure.match_histograms
     # have to transpose so that multichannel understands the dimensions
-    sen2,spot6 = sen2.numpy(),spot6.numpy() # turn to np from tensor
+    sen2,spot6 = sen2.cpu().numpy(),spot6.cpu().numpy() # turn to np from tensor
     sen2 = np.transpose(sen2,(1,2,0))
     spot6 = np.transpose(spot6,(1,2,0))
     spot6 = exposure.match_histograms(image=spot6,reference=sen2,channel_axis=2)

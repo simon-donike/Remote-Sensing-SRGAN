@@ -316,6 +316,12 @@ def dataset_selector(config):
         # get datamodule
         pl_datamodule = create_pl_datamodule(dl_train, dl_val)
         return(pl_datamodule)
+    
+    if config.Data.dataset_type=="SEN2NAIP":
+        from opensr_dataloaders.dataset_selector import select_dataset
+        train_loader,val_loader,ds_train,ds_val = select_dataset("S2NAIP_v4",train_batch_size=16,val_batch_size=10,num_workers=2,prefetch_factor=2)
+        pl_datamodule = create_pl_datamodule(train_loader, val_loader)
+        return pl_datamodule
 
 
 def create_pl_datamodule(train_loader,val_loader):

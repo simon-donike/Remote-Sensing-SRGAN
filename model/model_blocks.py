@@ -294,7 +294,8 @@ class Discriminator(nn.Module):
         batch_size = imgs.size(0)
         output = self.conv_blocks(imgs)
         output = self.adaptive_pool(output)
-        output = self.fc1(output.view(batch_size, -1))
+        #output = self.fc1(output.view(batch_size, -1)) # like this in original code, throws error for some reason
+        output = self.fc1(output.reshape(batch_size, -1))
         output = self.leaky_relu(output)
         logit = self.fc2(output)
 

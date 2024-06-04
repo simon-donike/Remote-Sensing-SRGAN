@@ -6,6 +6,7 @@ import numpy as np
 import time
 from omegaconf import OmegaConf
 import wandb
+from einops import rearrange
 
 # local imports
 from utils.calculate_metrics import calculate_metrics
@@ -40,9 +41,6 @@ class SRGAN_model(pl.LightningModule):
             if self.config.Model.load_fusion_checkpoint:
                 self.fusion = RecursiveNet_pl.load_from_checkpoint(self.config.Model.fusion_ckpt_path, strict=False)
 
-        """ Import Config Settings """
-        self.bands = self.config.bands
-
         # Generator
         from model.model_blocks import Generator
         self.generator = Generator(large_kernel_size=self.config.Generator.large_kernel_size,
@@ -50,7 +48,7 @@ class SRGAN_model(pl.LightningModule):
                         n_channels=self.config.Generator.n_channels,
                         n_blocks=self.config.Generator.n_blocks,
                         scaling_factor=self.config.Generator.scaling_factor,
-                        bands=self.bands)
+                        bands=self.config.bands)
         
         # Discriminator
         from model.model_blocks import Discriminator
@@ -58,7 +56,7 @@ class SRGAN_model(pl.LightningModule):
                             n_channels=self.config.Discriminator.n_channels,
                             n_blocks=self.config.Discriminator.n_blocks,
                             fc_size=self.config.Discriminator.fc_size,
-                            bands=self.bands)
+                            bands=self.config.bands)
         
         # VGG for encoding
         from model.model_blocks import TruncatedVGG19
@@ -93,6 +91,8 @@ class SRGAN_model(pl.LightningModule):
         Info:
             - This function currently only performs SISR SR
         """
+        
+        assert lr_imgs.shape[-1]!=75, "Input size is not 75, please resize to 75x75"
 
         # move to GPU if possible
         lr_imgs = lr_imgs.to(self.device)
@@ -114,7 +114,7 @@ class SRGAN_model(pl.LightningModule):
 
     def training_step(self,batch,batch_idx,optimizer_idx):
         # access data
-        lr_imgs,hr_imgs = batch
+        lr_imgs,hr_imgs = self.extract_batch(batch)
 
         # generate SR images, log losses immediately
         sr_imgs = self.forward(lr_imgs)
@@ -146,14 +146,20 @@ class SRGAN_model(pl.LightningModule):
             # encode images
 
             # if >3 bands, randomly chose 3 bands for VGG comparison
-            if lr_imgs.shape[1]>3:
+            # Need to check for MISR and SISR since the shapes are different in these cases
+            if lr_imgs.shape[1]>3 and self.config.SR_type=="SISR":
                 sr_imgs_3,hr_imgs_3 = sr_imgs.clone(),hr_imgs.clone()
                 band_idxs = np.random.choice(lr_imgs.shape[1], 3, replace=False)
-                sr_imgs_3,hr_imgs_3 = sr_imgs_3[:,band_idxs,:,:,:],hr_imgs_3[:,band_idxs,:,:,:]
-                # calc loss
+                sr_imgs_3,hr_imgs_3 = sr_imgs_3[:,band_idxs,:,:],hr_imgs_3[:,band_idxs,:,:]
                 sr_imgs_in_vgg_space = self.truncated_vgg19(sr_imgs_3)
                 hr_imgs_in_vgg_space = self.truncated_vgg19(hr_imgs_3).detach()  # detached because they're constant, targets
-                # Calculate the Perceptual loss between VGG encoded images to receive content loss
+                content_loss = self.content_loss_criterion(sr_imgs_in_vgg_space, hr_imgs_in_vgg_space)
+            elif lr_imgs.shape[1]>3 and self.config.SR_type=="MISR":
+                sr_imgs_3,hr_imgs_3 = sr_imgs.clone(),hr_imgs.clone()
+                band_idxs = np.random.choice(lr_imgs.shape[1], 3, replace=False)
+                sr_imgs_3,hr_imgs_3 = sr_imgs_3[:,:,band_idxs,:,:],hr_imgs_3[:,:,band_idxs,:,:]
+                sr_imgs_in_vgg_space = self.truncated_vgg19(sr_imgs_3)
+                hr_imgs_in_vgg_space = self.truncated_vgg19(hr_imgs_3).detach()  # detached because they're constant, targets
                 content_loss = self.content_loss_criterion(sr_imgs_in_vgg_space, hr_imgs_in_vgg_space)
             else:
                 # calc loss
@@ -180,10 +186,11 @@ class SRGAN_model(pl.LightningModule):
     def validation_step(self,batch,batch_idx):
         
         """ 1. Extract and Predict """
-        lr_imgs,hr_imgs = batch
-        #sr_imgs = self.forward(lr_imgs) # TODO: changed this to involve the predict step for reprodicibility, potentially change back
+        lr_imgs,hr_imgs = self.extract_batch(batch)
+        
+        sr_imgs = self.forward(lr_imgs) # TODO: changed this to involve the predict step for reprodicibility, potentially change back
         # TODO: take care of normalization stuff, where its normalized, where not, and how that interacts with the predict and logging functionalities
-        sr_imgs = self.predict(lr_imgs)
+        #sr_imgs = self.predict(lr_imgs)
 
         # if we're in MISR, keep only 1 image to perform visualization and checks. Keep Fused image for inspection
         if self.config.SR_type=="MISR":
@@ -191,6 +198,8 @@ class SRGAN_model(pl.LightningModule):
             lr_fused = self.fusion(lr_imgs)
             # keep only first image for visualization purposes
             lr_imgs_vis = lr_imgs[:,0,:,:,:]
+        else:
+            lr_imgs_vis = lr_imgs.clone()
 
         """ 2. Log Generator Metrics """
         # log image metrics
@@ -203,10 +212,17 @@ class SRGAN_model(pl.LightningModule):
 
         # only perform image logging for n pics, not all 200
         if batch_idx<self.config.Logging.num_val_images:
-            # log Stadard image visualizations  
-            plot_lr_img = torch.clone(lr_imgs_vis)   # deep copy to avoid graph problems
+            # log Stadard image visualizations, deep copy to avoid graph problems
+            plot_lr_img = torch.clone(lr_imgs_vis)
             plot_hr_img = torch.clone(hr_imgs)  
-            plot_sr_img = torch.clone(sr_imgs)  
+            plot_sr_img = torch.clone(sr_imgs) 
+
+            # If over 3 bands, extract them vor Viz
+            if self.config.bands>3:
+                plot_lr_img = plot_lr_img[:,:3,:,:]
+                plot_hr_img = plot_hr_img[:,:3,:,:]
+                plot_sr_img = plot_sr_img[:,:3,:,:]
+
             val_img = plot_tensors(plot_lr_img,plot_sr_img,plot_hr_img,title="Val")
             del plot_lr_img, plot_hr_img, plot_sr_img # delete copies from GPU
             self.logger.experiment.log({"Val SR":  wandb.Image(val_img)}) # log val image
@@ -241,6 +257,32 @@ class SRGAN_model(pl.LightningModule):
     def on_validation_epoch_end(self):
         # ToDo: fix, log test set image
         pass
+
+    def extract_batch(self,batch):
+        if type(batch)==dict:
+            lr_imgs,hr_imgs = batch["LR_image"],batch["image"]
+        else:
+            lr_imgs,hr_imgs = batch
+
+        # Reshape to B C W H if necessary
+        if lr_imgs.shape[1]>lr_imgs.shape[-1]:
+            lr_imgs = rearrange(lr_imgs,"b w h c -> b c w h")
+        if hr_imgs.shape[1]>hr_imgs.shape[-1]:
+            hr_imgs = rearrange(hr_imgs,"b w h c -> b c w h")
+        
+        # perform normalization if needed
+        if self.config.Data.dataloader_is_normalized==False:
+            lr_imgs = normalise_s2(lr_imgs)
+            hr_imgs = normalise_s2(hr_imgs)
+
+        # if input size > 75 for LR
+        if lr_imgs.shape[-1]>75:
+            lr_imgs = lr_imgs[:,:,:75,:75]
+        if hr_imgs.shape[-1]>300:
+            hr_imgs = hr_imgs[:,:,:300,:300]
+        
+        return lr_imgs,hr_imgs
+
 
     def configure_optimizers(self):
 

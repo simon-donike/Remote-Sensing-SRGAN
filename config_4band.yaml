@@ -9,9 +9,10 @@ Data:
   val_batch_size: 8
   num_workers: 6
   prefetch_factor: 2 #8 #2
+  dataloader_is_normalized: False # does the dataloader normalize the data to between -1 and +1? If not, do it
 
   # Detailed Dataset Setttings
-  dataset_type: 'SPOT6' # ['cv', 'SPOT6']
+  dataset_type: 'SEN2NAIP' # ['cv', 'SPOT6','SEN2NAIP']
   data_dir: 'E:/thesis_paper/data/' # ['data/openImages/',''E:/thesis_paper/data/']
   sen2_amount: 1
   spectral_matching: 'histogram'
@@ -20,13 +21,13 @@ Data:
 
 # Model, Loss, Training  Settings
 Model:
-  load_checkpoint: True
+  load_checkpoint: False
   ckpt_path: 'logs\curated_ckpts\pretrained_MISR_SPOT6synt.ckpt'
   load_fusion_checkpoint: False
   fusion_ckpt_path: 'logs\curated_ckpts\pretrained_Fusion.ckpt'
 Warmup:
   fusion: # train fusion in isolation previously
-    enable: True
+    enable: False
     epochs: 1
     lr: 1e-4
 

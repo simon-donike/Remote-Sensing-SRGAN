@@ -10,17 +10,17 @@ from multiprocessing import freeze_support
 from model.SRGAN import SRGAN_model
 
 # Set GPU
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 # Run Main Function
 if __name__ == '__main__':
-    # required for Multprocessing on Windows
-    freeze_support()
+    # enable if running on Windows
+    #freeze_support()
 
     # General
     torch.set_float32_matmul_precision('medium')
     # load config
-    config = OmegaConf.load("config_4band.yaml")
+    config = OmegaConf.load("configs/config_3band.yaml")
 
     #############################################################################################################
     " LOAD MODEL "
@@ -80,7 +80,7 @@ if __name__ == '__main__':
     trainer = Trainer(accelerator='cuda',
                     devices=-1,
                     check_val_every_n_epoch=1,
-                    val_check_interval=0.25,
+                    #val_check_interval=0.25,
                     limit_val_batches=10,
                     max_epochs=99999,
                     logger=[ 

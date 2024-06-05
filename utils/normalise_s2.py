@@ -35,6 +35,13 @@ def normalise_s2_old(im,stage="norm"):
         im = torch.clamp(im,0,1)
     return(im)
 
+def minmax_percentile(img, perc=2):
+    lower = torch.kthvalue(img.flatten(), int(len(img.flatten()) * perc / 100)).values
+    upper = torch.kthvalue(img.flatten(), int(len(img.flatten()) * (100 - perc) / 100)).values
+    img = torch.where(img > upper, upper, img)
+    img = torch.where(img < lower, lower, img)
+    return (img - torch.min(img)) / (torch.max(img) - torch.min(img))
+
 
 def linear_transform_4b(t_input,stage="norm"):
     assert stage in ["norm","denorm"]

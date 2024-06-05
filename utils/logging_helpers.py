@@ -5,20 +5,35 @@ import io
 import torchvision.transforms as transforms
 from utils.sen2_stretch import sen2_stretch
 from utils.normalise_s2 import normalise_s2
+from utils.normalise_s2 import minmax_percentile
 
 
 
 
 
-def plot_tensors(lr, sr, hr,title="Train"):
+def plot_tensors(lr, sr, hr,title="Train",stretch=None):
 
     # prepare tensors
-    sr = normalise_s2(sr,stage="denorm")
-    lr = normalise_s2(lr,stage="denorm")
-    hr = normalise_s2(hr,stage="denorm")
-    lr = sen2_stretch(lr)
-    sr = sen2_stretch(sr)
-    hr = sen2_stretch(hr)
+    if stretch=="sen2":
+        sr = normalise_s2(sr,stage="denorm")
+        lr = normalise_s2(lr,stage="denorm")
+        hr = normalise_s2(hr,stage="denorm")
+        lr = sen2_stretch(lr)
+        sr = sen2_stretch(sr)
+        hr = sen2_stretch(hr)
+    elif stretch=="minmax":
+        lr = minmax_percentile(lr)
+        sr = minmax_percentile(sr)
+        hr = minmax_percentile(hr)
+    elif stretch==None:
+        pass
+    else:
+        raise NotImplementedError("Stretch not implemented")
+
+    sr = sr.clamp(0,1)
+    lr = lr.clamp(0,1)
+    hr = hr.clamp(0,1)
+
 
     B, _, W, H = lr.shape  # Assuming all tensors have the same shape except for possible W and H
     if B>5: # Restrict to Max 5 images

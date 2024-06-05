@@ -299,8 +299,8 @@ class SRGAN_model(pl.LightningModule):
         # return schedulers and optimizers
         return [
                     [optimizer_d, optimizer_g],
-                    [{'scheduler': scheduler_d, 'monitor': self.config.Schedulers.metric, 'reduce_on_plateau': True, 'interval': 'epoch', 'frequency': 1},
-                     {'scheduler': scheduler_g, 'monitor': self.config.Schedulers.metric, 'reduce_on_plateau': True, 'interval': 'epoch', 'frequency': 1}],
+                    [{'scheduler': scheduler_d, 'monitor': self.config.Schedulers.metric, 'reduce_on_plateau': True, 'interval': self.config.Schedulers.interval, 'frequency': 1},
+                     {'scheduler': scheduler_g, 'monitor': self.config.Schedulers.metric, 'reduce_on_plateau': True, 'interval': self.config.Schedulers.interval, 'frequency': 1}],
                 ]
 
 if __name__=="__main__":       

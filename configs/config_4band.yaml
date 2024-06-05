@@ -9,14 +9,14 @@ Data:
   val_batch_size: 8
   num_workers: 6
   prefetch_factor: 2 #8 #2
-  dataloader_is_normalized: False # does the dataloader normalize the data to between -1 and +1? If not, do it
+  dataloader_is_normalized: False # is data normalized?
 
   # Detailed Dataset Setttings
   dataset_type: 'SEN2NAIP' # ['cv', 'SPOT6','SEN2NAIP']
-  data_dir: 'E:/thesis_paper/data/' # ['data/openImages/',''E:/thesis_paper/data/']
+  data_dir: None # ['data/openImages/',''E:/thesis_paper/data/',None]
   sen2_amount: 1
-  spectral_matching: 'histogram'
-  return_type: 'cross_sensor' #interpolated_matched
+  spectral_matching: None # ['histogram', None]
+  return_type: None # [interpolated_matched, None]
 
 
 # Model, Loss, Training  Settings
@@ -54,8 +54,9 @@ Optimizers:
 
 Schedulers:
   metric: 'val/L1'
-  patience_g: 3
-  patience_d: 3
+  interval: 'step' # ['step', 'epoch']
+  patience_g: 15000
+  patience_d: 15000
   factor_g: 0.25
   factor_d: 0.25
   verbose: True
@@ -64,4 +65,4 @@ Losses:
   adv_loss_beta:  1e-3
 
 Logging:
-  num_val_images: 5
+  num_val_images: 5 # how many images logged per val cycle

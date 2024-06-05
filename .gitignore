@@ -11,5 +11,8 @@ logs/
 lightning_logs/
 lightning_logs/*
 lightning_logs
+images/
+images/*
+utils/prepare_dataset.py
 
 

@@ -11,7 +11,7 @@ from model.SRGAN import SRGAN_model
 
 # Set GPU
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
-
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Run Main Function
 if __name__ == '__main__':
     # enable if running on Windows
@@ -26,11 +26,12 @@ if __name__ == '__main__':
     " LOAD MODEL "
     #############################################################################################################
     # load rpetrained or instanciate new
-    if config.Model.load_checkpoint:
-        model = SRGAN_model.load_from_checkpoint(config.Model.ckpt_path, strict=False)
-    else:
-        model = SRGAN_model(config)
+    model = SRGAN_model(config).to(device)
 
+    # set reload checkpoint settings for trainer
+    resume_from_checkpoint=None
+    if config.Model.load_checkpoint==True:
+        resume_from_checkpoint=config.Model.ckpt_path
 
     #############################################################################################################
     """ GET DATA """
@@ -83,6 +84,7 @@ if __name__ == '__main__':
                     #val_check_interval=0.25,
                     limit_val_batches=10,
                     max_epochs=99999,
+                    resume_from_checkpoint=resume_from_checkpoint,
                     logger=[ 
                                 wandb_logger,
                             ],

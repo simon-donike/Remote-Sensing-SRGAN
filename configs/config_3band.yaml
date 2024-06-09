@@ -8,23 +8,26 @@ Data:
   train_batch_size: 12 #12
   val_batch_size: 8
   num_workers: 6
-  prefetch_factor: 2 #8 #2
-  dataloader_is_normalized: True # is data normalized? To disable messing with values, set True
+  prefetch_factor: 4 #8 #2
+  data_type: "8bit" # ["8bit", "SEN2"]
 
   # Detailed Dataset Setttings
-  dataset_type: 'GE' # ['cv', 'SPOT6','SEN2NAIP']
+  dataset_type: 'GE' # ['cv', 'SPOT6','SEN2NAIP','GE']
   data_dir: None # ['data/openImages/',''E:/thesis_paper/data/',None]
   sen2_amount: 1
   spectral_matching: None # ['histogram', None]
   return_type: None # [interpolated_matched, None]
 
+  # Test Dataset
+  test_dataset: 'sen2_test' # ['sen2_test',None]
+
 
 # Model, Loss, Training  Settings
 Model:
   load_checkpoint: True
-  ckpt_path: 'logs\curated_ckpts\pretrained_SPOT6_int.ckpt'
+  ckpt_path: "logs/2023_SRGAN_4band/2024-06-06_11-36-01/epoch=126-step=247904.ckpt"
   load_fusion_checkpoint: False
-  fusion_ckpt_path: 'logs\curated_ckpts\pretrained_Fusion.ckpt'
+  fusion_ckpt_path: 'logs/curated_ckpts/pretrained_Fusion.ckpt'
 Warmup:
   fusion: # train fusion in isolation previously.
     enable: False
@@ -49,14 +52,14 @@ TruncatedVGG:
   j: 4
 
 Optimizers:
-  optim_g_lr: 1e-4
-  optim_d_lr: 1e-4
+  optim_g_lr: 1e-5
+  optim_d_lr: 1e-5
 
 Schedulers:
   metric: 'val/L1' # 'val/L1' - val only available in epoch mode
   interval: 'epoch' # ['step', 'epoch']
-  patience_g: 5
-  patience_d: 5
+  patience_g: 15
+  patience_d: 15
   factor_g: 0.25
   factor_d: 0.25
   verbose: True

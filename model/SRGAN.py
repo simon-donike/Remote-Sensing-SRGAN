@@ -11,6 +11,7 @@ from einops import rearrange
 # local imports
 from utils.calculate_metrics import calculate_metrics
 from utils.logging_helpers import plot_tensors
+from utils.logging_helpers import plot_tensors_S2
 from utils.logging_helpers import plot_fusion
 from utils.logging_helpers import misr_plot
 from utils.normalise_s2 import normalise_s2
@@ -75,6 +76,7 @@ class SRGAN_model(pl.LightningModule):
         if self.config.SR_type=="MISR":
             lr_imgs = self.fusion(lr_imgs)
         # perform generative Step
+        #sr_imgs = self.predict(lr_imgs)
         sr_imgs = self.generator(lr_imgs)
         return(sr_imgs)
     
@@ -92,7 +94,14 @@ class SRGAN_model(pl.LightningModule):
             - This function currently only performs SISR SR
         """
         
-        assert lr_imgs.shape[-1]!=75, "Input size is not 75, please resize to 75x75"
+        assert lr_imgs.shape[-1]==75, "Input size is not 75, please resize to 75x75"
+            
+        interpolate_nir = False
+        if self.config.bands==3 and lr_imgs.shape[1]==4:
+            interpolate_nir = True
+            nir_lr = lr_imgs[:,3:4,:,:]
+            lr_imgs = lr_imgs[:,:3,:,:]
+            nir_lr = torch.nn.functional.interpolate(nir_lr,size=(300,300),mode="bilinear",antialias=True)
 
         # move to GPU if possible
         lr_imgs = lr_imgs.to(self.device)
@@ -102,13 +111,16 @@ class SRGAN_model(pl.LightningModule):
         # preform SR
         with torch.no_grad():
             sr_imgs = self.generator(lr_imgs)
-        # histogram match to also encoded LR images
-        sr_imgs = histogram_match(lr_imgs,sr_imgs)
         # denormalize images
         if normalize:
             sr_imgs = normalise_s2(sr_imgs,stage="denorm")
         # move to CPU
         sr_imgs = sr_imgs.cpu().detach()
+
+        if interpolate_nir:
+            sr_imgs,nir_lr = sr_imgs.cpu().detach(),nir_lr.cpu().detach()
+            sr_imgs = torch.cat([sr_imgs,nir_lr],dim=1)
+
         return sr_imgs
 
 
@@ -205,7 +217,7 @@ class SRGAN_model(pl.LightningModule):
         # log image metrics
         metrics_hr_img = torch.clone(hr_imgs)  # deep copy to avoid graph problems
         metrics_sr_img = torch.clone(sr_imgs)  
-        metrics = calculate_metrics(metrics_sr_img,metrics_hr_img,phase="val")
+        metrics = calculate_metrics(metrics_sr_img.cpu(),metrics_hr_img.cpu(),phase="val")
         del metrics_hr_img, metrics_sr_img # delete copies from GPU
         for key, value in metrics.items():
             self.log(f'{key}', value)
@@ -223,9 +235,9 @@ class SRGAN_model(pl.LightningModule):
                 plot_hr_img = plot_hr_img[:,:3,:,:]
                 plot_sr_img = plot_sr_img[:,:3,:,:]
 
-            val_img = plot_tensors(plot_lr_img,plot_sr_img,plot_hr_img,title="Val")
+            val_img = plot_tensors(plot_lr_img,plot_sr_img,plot_hr_img,title="Val",stretch=self.config.Data.data_type)
             del plot_lr_img, plot_hr_img, plot_sr_img # delete copies from GPU
-            self.logger.experiment.log({"Val SR":  wandb.Image(val_img)}) # log val image
+            self.logger.experiment.log({"Images/Val SR":  wandb.Image(val_img)}) # log val image
 
             # log MISR specific image visualizations
             if self.config.SR_type=="MISR":
@@ -234,7 +246,7 @@ class SRGAN_model(pl.LightningModule):
                 # plot images
                 plot_fusion_img = plot_fusion(torch.clone(lr_imgs_vis),torch.clone(lr_fused),torch.clone(hr_imgs))
                 # log fusion image to logger
-                self.logger.experiment.log({"Fusion":  wandb.Image(plot_fusion_img)})
+                self.logger.experiment.log({"Images/Fusion":  wandb.Image(plot_fusion_img)})
 
                 # plot SR plus grid
                 misr_img = misr_plot(torch.clone(lr_imgs),torch.clone(sr_imgs) ,torch.clone(hr_imgs))
@@ -254,11 +266,52 @@ class SRGAN_model(pl.LightningModule):
         self.log("validation/DISC_adversarial_loss",adversarial_loss)
 
 
+    @torch.no_grad()
     def on_validation_epoch_end(self):
-        # ToDo: fix, log test set image
-        pass
+        """
+        ------------------------------------
+        Every Epoch, log TRAIN images
+        ------------------------------------
+        """
 
-    def extract_batch(self,batch):
+        # Get Images, SR 
+        batch = next(iter(self.trainer.datamodule.train_dataloader() ))
+        lr_imgs,hr_imgs = self.extract_batch(batch)
+        sr_imgs = self.forward(lr_imgs.cuda())
+
+        # prepare images for logging
+        if self.config.bands>3:
+                lr_imgs = lr_imgs[:,:3,:,:]
+                hr_imgs = hr_imgs[:,:3,:,:]
+                sr_imgs = sr_imgs[:,:3,:,:]
+        train_img = plot_tensors(lr_imgs,sr_imgs,hr_imgs,title="Train",stretch=self.config.Data.data_type)
+        self.logger.experiment.log({"Images/Train SR":  wandb.Image(train_img)}) # log train image
+
+        """
+        ------------------------------------
+        Every Epoch, log TEST S2 images
+        ------------------------------------
+        """
+        if self.trainer.datamodule.test_dataloader() is not None:
+            lr_imgs = next(iter(self.trainer.datamodule.test_dataloader() ))
+            lr_imgs = lr_imgs[:, :, :75, :75]
+            lr_imgs = normalise_s2(lr_imgs,stage="norm")
+            if self.config.bands==3: # extract only 3 bands, since test loader always has 4 bands
+                lr_imgs = lr_imgs[:,:3,:,:]
+                sr_imgs = sr_imgs[:,:3,:,:]
+            sr_imgs = self.forward(lr_imgs.cuda())
+            sr_imgs = normalise_s2(sr_imgs,stage="denorm")
+            lr_imgs = normalise_s2(lr_imgs,stage="denorm")
+            # prepare images for logging
+            if self.config.bands>3: # remove 4th band if its present for visualization
+                    lr_imgs = lr_imgs[:,:3,:,:]
+                    sr_imgs = sr_imgs[:,:3,:,:]
+            test_img = plot_tensors_S2(lr_imgs,sr_imgs,title="Test S2",stretch="SEN2_viz")
+            self.logger.experiment.log({"Images/Test S2":  wandb.Image(test_img)}) # log train image
+
+
+    def extract_batch(self,batch,overwrite_norm=False):
+        assert overwrite_norm in [False,"SEN2","8bit"], "Please provide a valid normalization type for overwrite_norm"
         if type(batch)==dict:
             lr_imgs,hr_imgs = batch["LR_image"],batch["image"]
         else:
@@ -271,9 +324,24 @@ class SRGAN_model(pl.LightningModule):
             hr_imgs = rearrange(hr_imgs,"b w h c -> b c w h")
         
         # perform normalization if needed
-        if self.config.Data.dataloader_is_normalized==False:
+        if self.config.Data.data_type=="SEN2" and not overwrite_norm:
             lr_imgs = normalise_s2(lr_imgs)
             hr_imgs = normalise_s2(hr_imgs)
+        elif self.config.Data.data_type=="8bit" and not overwrite_norm:
+            lr_imgs = (lr_imgs*2)-1
+            hr_imgs = (hr_imgs*2)-1
+        elif overwrite_norm!=False:
+            if overwrite_norm=="SEN2":
+                lr_imgs = normalise_s2(lr_imgs)
+                hr_imgs = normalise_s2(hr_imgs)
+            elif overwrite_norm=="8bit":
+                lr_imgs = (lr_imgs*2)-1
+                hr_imgs = (hr_imgs*2)-1
+            else:
+                raise NotImplementedError("Normalization type not implemented - c1")
+        else:
+            raise NotImplementedError("Normalization type not implemented - c2")
+
 
         # if input size > 75 for LR
         if lr_imgs.shape[-1]>75:

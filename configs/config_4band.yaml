@@ -9,7 +9,7 @@ Data:
   val_batch_size: 8
   num_workers: 6
   prefetch_factor: 2 #8 #2
-  dataloader_is_normalized: False # is data normalized?
+  data_type: "SEN2" # ["8bit", "SEN2"]
 
   # Detailed Dataset Setttings
   dataset_type: 'SEN2NAIP' # ['cv', 'SPOT6','SEN2NAIP']
@@ -18,11 +18,14 @@ Data:
   spectral_matching: None # ['histogram', None]
   return_type: None # [interpolated_matched, None]
 
+  # Test Dataset
+  test_dataset: 'sen2_test' # ['sen2_test',None]
+
 
 # Model, Loss, Training  Settings
 Model:
-  load_checkpoint: False
-  ckpt_path: 'logs\curated_ckpts\pretrained_MISR_SPOT6synt.ckpt'
+  load_checkpoint: True
+  ckpt_path: 'logs/2023_SRGAN_4band/2024-06-06_08-43-23/last.ckpt'
   load_fusion_checkpoint: False
   fusion_ckpt_path: 'logs\curated_ckpts\pretrained_Fusion.ckpt'
 Warmup:
@@ -49,11 +52,11 @@ TruncatedVGG:
   j: 4
 
 Optimizers:
-  optim_g_lr: 1e-4
-  optim_d_lr: 1e-4
+  optim_g_lr: 1e-5
+  optim_d_lr: 1e-5
 
 Schedulers:
-  metric: 'val/L1'
+  metric: 'train/L1'
   interval: 'step' # ['step', 'epoch']
   patience_g: 15000
   patience_d: 15000

@@ -18,10 +18,12 @@ class ImageDataset(Dataset):
         self.common_images = sorted(list(set(self.hr_images) & set(self.lr_images)))
 
         if phase == "train":
-            self.augmentations = A.Compose([
-                A.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1, p=0.0),
-                A.GaussianBlur(blur_limit=(3, 3), p=0.0),
-                A.RandomBrightnessContrast(p=0.0)
+            self.augmentations = A.ReplayCompose([
+                A.HorizontalFlip(p=0.5),
+                A.VerticalFlip(p=0.5),
+                A.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.4, p=0.75),
+                A.GaussianBlur(blur_limit=(3, 3), p=0.25),
+                A.RandomBrightnessContrast(p=0.5)
             ])
         else:
             self.augmentations = None
@@ -42,10 +44,11 @@ class ImageDataset(Dataset):
         lr_image = np.array(lr_image)
 
         if self.augmentations:
-            augmented = self.augmentations(image=hr_image, image0=lr_image)
-            hr_image = augmented['image']
-            lr_image = augmented['image0']
-
+            hr_image_aug = self.augmentations(image=hr_image) # apply augmentation to first image
+            replay_dict = hr_image_aug['replay'] # extract the replay dictionary from total augmentation output
+            hr_image = hr_image_aug['image'] # extract the augmented image from total augmentation output
+            lr_image = A.ReplayCompose.replay(replay_dict, image=lr_image)['image']  #apply same augmentation to second image
+            
         # turn images into torch
         hr_image = torch.Tensor(hr_image)/255.
         lr_image = torch.Tensor(lr_image)/255.
@@ -62,8 +65,9 @@ if __name__ == "__main__":
     dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
 
     # Iterate through the dataloader
-    for x in tqdm(dataloader):
-        print(x["image"].shape, x["LR_image"].shape)
+    #for x in tqdm(dataloader):
+    #    #print(x["image"].shape, x["LR_image"].shape)
+    #    pass
 
 if __name__ == "__main__":
     
@@ -98,6 +102,7 @@ if __name__ == "__main__":
         # Display the images
         plt.tight_layout()
         plt.savefig("images/"+str(name)+".png")
+        plt.close()
 
     for i in range(10):
         ims = dataset[i]

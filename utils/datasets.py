@@ -291,6 +291,17 @@ class SPOT6(Dataset):
     
 
 def dataset_selector(config):
+    # get test set first
+    if config.Data.test_dataset!=None:
+        assert config.Data.test_dataset in [None,"sen2_test"], "Test dataset not implemented"
+        from opensr_dataloaders.sen2_test import sen2_test
+        ds_test = sen2_test(data_folder = "/data1/simon/datasets/val_s2_tiles/S2A_MSIL2A_20240214T031831_N0510_R118_T48PXT_20240214T063445.SAFE",amount=30,band_selection="R10m",apply_norm=False)
+        dl_test = DataLoader(ds_test, batch_size=10, shuffle=True,
+                              num_workers=2,prefetch_factor=2,
+                              drop_last=True)
+    else:
+        dl_test = None
+        
     if config.Data.dataset_type=="cv":
         # train
         ds_train = cv_dataset(config.Data.data_dir,phase="train")
@@ -303,7 +314,7 @@ def dataset_selector(config):
                             num_workers=config.Data.num_workers,prefetch_factor=config.Data.prefetch_factor,
                             drop_last=True,sen2_amount=config.Data.sen2_amount)
         # get datamodule
-        pl_datamodule = create_pl_datamodule(dl_train, dl_val)
+        pl_datamodule = create_pl_datamodule(dl_train, dl_val,dl_test)
         return(pl_datamodule)
     
     elif config.Data.dataset_type=="SPOT6":
@@ -314,13 +325,13 @@ def dataset_selector(config):
         ds_val = SPOT6(config.Data.data_dir,phase="val",sen2_amount=config.Data.sen2_amount,return_type=config.Data.return_type,spectral_matching=config.Data.spectral_matching)
         dl_val = DataLoader(ds_val, batch_size=config.Data.val_batch_size, shuffle=False,num_workers=config.Data.num_workers,prefetch_factor=config.Data.prefetch_factor,drop_last=True)
         # get datamodule
-        pl_datamodule = create_pl_datamodule(dl_train, dl_val)
+        pl_datamodule = create_pl_datamodule(dl_train, dl_val,dl_test)
         return(pl_datamodule)
     
     elif config.Data.dataset_type=="SEN2NAIP":
         from opensr_dataloaders.dataset_selector import select_dataset
         train_loader,val_loader,ds_train,ds_val = select_dataset("S2NAIP_v4",train_batch_size=16,val_batch_size=10,num_workers=2,prefetch_factor=2)
-        pl_datamodule = create_pl_datamodule(train_loader, val_loader)
+        pl_datamodule = create_pl_datamodule(train_loader, val_loader,dl_test)
         return pl_datamodule
     
     elif config.Data.dataset_type=="GE":
@@ -328,34 +339,40 @@ def dataset_selector(config):
         from utils.GE_dataset import ImageDataset
         dataset_train = ImageDataset(root_dir ,phase="train")
         train_loader = DataLoader(dataset_train, batch_size=16, shuffle=True,num_workers=2,prefetch_factor=2)
-        dataset_val = ImageDataset(root_dir ,phase="train")
+        dataset_val = ImageDataset(root_dir ,phase="val")
         val_loader = DataLoader(dataset_val, batch_size=10, shuffle=True,num_workers=2,prefetch_factor=2)
         
-        pl_datamodule = create_pl_datamodule(train_loader, val_loader) # 
+        pl_datamodule = create_pl_datamodule(train_loader, val_loader,dl_test) # 
         return pl_datamodule
     
     else:
         raise NotImplementedError("Dataset type not implemented")
 
 
-def create_pl_datamodule(train_loader,val_loader):
+def create_pl_datamodule(train_loader,val_loader,test_loader=None):
     import pytorch_lightning as pl
     class pl_datamodule(pl.LightningDataModule):
-        def __init__(self, train_loader, val_loader):
+        def __init__(self, train_loader, val_loader,test_loader=None):
             super().__init__()
             self.train_loader = train_loader
             self.val_loader = val_loader
+            self.test_loader = test_loader
         def train_dataloader(self):
             return self.train_loader
         def val_dataloader(self):
             return self.val_loader
+        def test_dataloader(self):
+            if self.test_loader!=None:
+                return self.test_loader
         def prepare_data(self):
             pass
         def setup(self, stage=None):
             pass
         
-
-    datamodule = pl_datamodule(train_loader,val_loader)
+    if test_loader!=None:
+        datamodule = pl_datamodule(train_loader,val_loader,test_loader)
+    else:
+        datamodule = pl_datamodule(train_loader,val_loader)
     return(datamodule)
 
 

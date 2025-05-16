@@ -20,7 +20,7 @@ Steps to train your own version:
 
 ## Inference
 The 'predict_S2_tile' performs automated Super-Resolution of a whole Sentinel-2 tile. The code in question is still under development, but operational in the context of this repo.  
-Compiled in the folder *utils/sr_s2_utils*, the code creates a stacked copy of the RGB-NIR bands extracted from the .SAFE structure downloaded form Sentinel Hub. The image is iteratively super-resoved via the *predict* method of the SRGAN model, which instanciates a placeholder tif on the disk and writes the SR images into it. The images are overlapped and averaged to reduce patching artifacts. More information can be found in the docstrings of the *utils/sr_s2_utils/main* functions.
+Compiled in the folder *utils/sr_s2_utils*, the code creates a stacked copy of the RGB-NIR bands extracted from the .SAFE structure downloaded from Sentinel Hub. The image is iteratively super-resoved via the *predict* method of the SRGAN model, which instanciates a placeholder tif on the disk and writes the SR images into it. The images are overlapped and averaged to reduce patching artifacts. More information can be found in the docstrings of the *utils/sr_s2_utils/main* functions.
 
 ## Pretrained Weights
 Download the pretrained weights [here](https://drive.google.com/drive/folders/1RcU3EQnJ7O6fYf8Zr7kqN-KCnFhsTYCa?usp=sharing) and put them in the logs/curated_ckpts folder. Check the experiments below to chose the right pretrained checkpoint for your purpose. If SR is to be performed on different regions, I strongly recommend finetuning.
@@ -89,7 +89,7 @@ tracking via this WandB run: [Run]([https://wandb.ai/simon-donike/2023_SRGAN/run
 #### Example Validation Image
 ![Experiment 3 Example Image](resources/spot6v1_val.png)
 
-## Experiment 4: SPOT6 Dataset - Interpoalted Version - Stratiefied Data by Land Cover Classification
+## Experiment 4: SPOT6 Dataset - Interpolated Version - Stratiefied Data by Land Cover Classification
 #### Description
 Continued training from Experiment 3 checkpoint. The data has now been stratified in order to prevent the overrepresentation of agricultural images. 
 #### PSNR and SSIM Results
@@ -104,7 +104,7 @@ tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs
 #### Example Validation Image
 ![Experiment 4 Example Image](resources/spot6strat_val.png)
 
-## Experiment 5: SPOT6 Dataset - Interpoalted Version - Stratiefied Data by Land Cover Classification - Maximum Time Delta of 10 days
+## Experiment 5: SPOT6 Dataset - Interpolated Version - Stratiefied Data by Land Cover Classification - Maximum Time Delta of 10 days
 #### Description
 Continued training from Experiment 4 checkpoint. The dataset has been further reduced to only include LR-HR pairs that were taken 10 or less days apart. Another important change is that the reflectance has been converted to the Sen2 spectral response by histogram matching the SPOT6 LR and HR versions to fit the histogram of the real Sen2 image. This model has not been trained to convergence and can only serve as a test.
 #### PSNR and SSIM Results
@@ -119,7 +119,7 @@ tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs
 #### Example Validation Image
 ![Experiment 5 Example Image](resources/spot6stratTiemDeltaSen2Spectrum_val.png)
 
-## Experiment 6: SPOT6 Dataset - Interpoalted Version - Stratiefied Data by Land Cover Classification - Maximum Time Delta of 10 days - Normalization
+## Experiment 6: SPOT6 Dataset - Interpolated Version - Stratiefied Data by Land Cover Classification - Maximum Time Delta of 10 days - Normalization
 #### Description
 Continued training from Experiment 4 checkpoint. Now, the data is linearilly srtetched by dividing by 3000 in the Sen2 spectrum, then transformed to -1..+1.
 #### PSNR and SSIM Results
@@ -175,7 +175,7 @@ tbd
 #### Tracking
 tracking via this WandB run: [Run](https://wandb.ai/simon-donike/2023_SRGAN/runs/7ldju4hr)
 #### Example Validation Image
-Even though noise was added, good results form the syhntetic MISR revisits. Especially visible in this run is the problematic SR of urban images, where more rural textures are pasted especially in suburban areas.
+Even though noise was added, we see good results from the syhntetic MISR revisits. Especially visible in this run is the problematic SR of urban images, where more rural textures are pasted especially in suburban areas.
 ![Experiment 7 Example Image](resources/synth_MISR.png)
 
 ## Experiment 3: MISR on real Sentinel-2 time series

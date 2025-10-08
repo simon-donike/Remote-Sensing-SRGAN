@@ -32,16 +32,55 @@ def normalize(sen2,spot6,sen2_amount=1):
     return sen2,spot6
 
 # HISTOGRAM MATCHING
-def histogram(sen2,spot6,sen2_amount=None):
-    # https://scikit-image.org/docs/dev/api/skimage.exposure.html#skimage.exposure.match_histograms
-    # have to transpose so that multichannel understands the dimensions
-    sen2,spot6 = sen2.numpy(),spot6.numpy() # turn to np from tensor
-    sen2 = np.transpose(sen2,(1,2,0))
-    spot6 = np.transpose(spot6,(1,2,0))
-    spot6 = exposure.match_histograms(image=spot6,reference=sen2,channel_axis=2)
-    spot6,sen2 = np.transpose(spot6,(2,0,1)),np.transpose(sen2,(2,0,1))
-    spot6,sen2 = torch.Tensor(spot6),torch.Tensor(sen2)
-    return spot6
+def histogram(reference: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    """
+    Per-channel histogram match of `target` -> `reference`.
+
+    Supports (C,H,W) or (B,C,H,W).  
+    If batch size differs, reference with B=1 is broadcast; else paired by batch.  
+    Number of channels must be the same for reference and target.
+
+    Returns tensor on target's device/dtype.
+    """
+    assert target.ndim in (3,4) and reference.ndim in (3,4), "Expected (C,H,W) or (B,C,H,W)"
+    device, dtype = target.device, target.dtype
+
+    # normalize to BCHW
+    ref = reference.unsqueeze(0) if reference.ndim == 3 else reference
+    tgt = target.unsqueeze(0) if target.ndim == 3 else target
+
+    B_ref, C_ref, H_ref, W_ref = ref.shape
+    B_tgt, C_tgt, H_tgt, W_tgt = tgt.shape
+    assert C_ref == C_tgt, f"channel mismatch: reference={C_ref}, target={C_tgt}"
+
+    # resize reference to target spatial size (bilinear, no align_corners)
+    if (H_ref, W_ref) != (H_tgt, W_tgt):
+        ref = F.interpolate(ref.to(dtype=torch.float32), size=(H_tgt, W_tgt), mode="bilinear", align_corners=False)
+
+    # numpy buffers
+    ref_np = ref.detach().cpu().numpy()
+    tgt_np = tgt.detach().cpu().numpy()
+    out_np = np.empty_like(tgt_np)
+
+    for b in range(B_tgt):
+        rb = b % B_ref  # broadcast if reference has B=1
+        for c in range(C_tgt):
+            ref_ch = ref_np[rb, c]
+            tgt_ch = tgt_np[b, c]
+
+            mask = np.isfinite(tgt_ch) & np.isfinite(ref_ch)
+            if mask.any():
+                matched = exposure.match_histograms(tgt_ch[mask], ref_ch[mask])
+                out = tgt_ch.copy()
+                out[mask] = matched
+                out_np[b, c] = out
+            else:
+                out_np[b, c] = tgt_ch
+
+    out = torch.from_numpy(out_np).to(device=device, dtype=dtype)
+    return out[0] if target.ndim == 3 else out
+
+
 
 # MOMENT MATCHING
 def moment(sen2,spot6,sen2_amount=None):   

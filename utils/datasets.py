@@ -316,6 +316,36 @@ def dataset_selector(config):
         # get datamodule
         pl_datamodule = create_pl_datamodule(dl_train, dl_val)
         return(pl_datamodule)
+    
+    if config.Data.dataset_type=="S2_6b":
+        desired_20m_order = ["B05_20m","B06_20m","B07_20m","B8A_20m","B11_20m","B12_20m"]
+        from utils.S2_6b_ds import S2SAFEDataset
+        ds_train =  S2SAFEDataset(
+            phase="train",
+            manifest_json="/data3/S2_20m/s2_safe_manifest_20m.json",
+            group_by="granule",
+            group_regex=r".*?/GRANULE/([^/]+)/IMG_DATA/.*",
+            bands_keep=desired_20m_order,   # keep only these
+            band_order=desired_20m_order,   # and enforce this order
+            dtype="float32",
+        )
+        dl_train = DataLoader(ds_train, batch_size=config.Data.train_batch_size, shuffle=True
+                                ,num_workers=config.Data.num_workers,prefetch_factor=config.Data.prefetch_factor
+                                ,drop_last=True)
+        ds_val =  S2SAFEDataset(
+            phase="val",
+            manifest_json="/data3/S2_20m/s2_safe_manifest_20m.json",
+            group_by="granule",
+            group_regex=r".*?/GRANULE/([^/]+)/IMG_DATA/.*",
+            bands_keep=desired_20m_order,   # keep only these
+            band_order=desired_20m_order,   # and enforce this order
+            dtype="float32",
+        )
+        dl_val = DataLoader(ds_val, batch_size=config.Data.val_batch_size, shuffle=False
+                                ,num_workers=config.Data.num_workers,prefetch_factor=config.Data.prefetch_factor
+                                ,drop_last=True)
+        pl_datamodule = create_pl_datamodule(dl_train, dl_val)
+        return(pl_datamodule)
 
 
 def create_pl_datamodule(train_loader,val_loader):
@@ -337,27 +367,3 @@ def create_pl_datamodule(train_loader,val_loader):
 
     datamodule = pl_datamodule(train_loader,val_loader)
     return(datamodule)
-
-
-if __name__ == "__main__":
-    print("Dataset: saving test image to disk...")
-    ds = SPOT6('E:/thesis_paper/data/' ,return_type='cross_sensor',phase="train",sen2_amount=4)
-    lr,hr = ds.__getitem__(31)
-
-
-    # save first image of tensor to disk
-    import matplotlib.pyplot as plt
-    lr,hr = ds.__getitem__(45)
-    lr = normalise_s2(lr,stage="denorm")
-    hr = normalise_s2(hr,stage="denorm")
-    from utils.sen2_stretch import sen2_stretch
-    lr = sen2_stretch(lr) 
-    hr = sen2_stretch(hr)
-    if lr.shape[0]!=3:
-        lr = lr[:3,:,:] 
-    # plot two images
-    fig,ax = plt.subplots(1,2)
-    ax[0].imshow(hr.permute(1,2,0).numpy()*2)
-    ax[1].imshow(lr.permute(1,2,0).numpy()*2)
-    plt.savefig("test_image.png")
-    plt.close()

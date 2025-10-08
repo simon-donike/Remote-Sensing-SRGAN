@@ -12,7 +12,7 @@ from utils.calculate_metrics import calculate_metrics
 from utils.logging_helpers import plot_tensors
 from utils.logging_helpers import plot_fusion
 from utils.logging_helpers import misr_plot
-from utils.normalise_s2 import normalise_s2
+from utils.normalise_s2 import normalise_s2, normalise_10k
 from utils.dataloader_utils import histogram as histogram_match
 
 
@@ -32,14 +32,15 @@ class SRGAN_model(pl.LightningModule):
         # if MISR is wanted, instantiate fusion net
         if self.config.SR_type=="MISR":
             from model.fusion import RecursiveNet,RecursiveNet_pl
-            self.fusion = RecursiveNet_pl()
+            self.fusion = RecursiveNet_pl(in_channels=self.in_bands.in_bands)
                 # load pretrained weights
             if self.config.Model.load_fusion_checkpoint:
                 self.fusion = RecursiveNet_pl.load_from_checkpoint(self.config.Model.fusion_ckpt_path, strict=False)
 
         # Generator
         from model.model_blocks import Generator
-        self.generator = Generator(large_kernel_size=self.config.Generator.large_kernel_size,
+        self.generator = Generator(in_channels = self.config.Model.in_bands,
+                        large_kernel_size=self.config.Generator.large_kernel_size,
                         small_kernel_size=self.config.Generator.small_kernel_size,
                         n_channels=self.config.Generator.n_channels,
                         n_blocks=self.config.Generator.n_blocks,
@@ -47,7 +48,8 @@ class SRGAN_model(pl.LightningModule):
         
         # Discriminator
         from model.model_blocks import Discriminator
-        self.discriminator = Discriminator(kernel_size=self.config.Discriminator.kernel_size,
+        self.discriminator = Discriminator(in_channels=self.config.Model.in_bands,
+                            kernel_size=self.config.Discriminator.kernel_size,
                             n_channels=self.config.Discriminator.n_channels,
                             n_blocks=self.config.Discriminator.n_blocks,
                             fc_size=self.config.Discriminator.fc_size)
@@ -74,7 +76,7 @@ class SRGAN_model(pl.LightningModule):
     
 
     @torch.no_grad()
-    def predict(self,lr_imgs):
+    def predict_step(self,lr_imgs):
         """
         This function is for the prediction in the Deployment stage, therefore
         the normalization and denormalization needs to happen here.
@@ -89,14 +91,14 @@ class SRGAN_model(pl.LightningModule):
         # move to GPU if possible
         lr_imgs = lr_imgs.to(self.device)
         # normalize images
-        lr_imgs = normalise_s2(lr_imgs,stage="norm")
+        lr_imgs = normalise_10k(lr_imgs,stage="norm")
         # preform SR
         with torch.no_grad():
             sr_imgs = self.generator(lr_imgs)
         # histogram match to also encoded LR images
         sr_imgs = histogram_match(lr_imgs,sr_imgs)
         # denormalize images
-        sr_imgs = normalise_s2(sr_imgs,stage="denorm")
+        sr_imgs = normalise_10k(sr_imgs,stage="denorm")
         # move to CPU
         sr_imgs = sr_imgs.cpu().detach()
         return sr_imgs
@@ -134,8 +136,16 @@ class SRGAN_model(pl.LightningModule):
             
             """ 1. Get VGG space loss """
             # encode images
-            sr_imgs_in_vgg_space = self.truncated_vgg19(sr_imgs)
-            hr_imgs_in_vgg_space = self.truncated_vgg19(hr_imgs).detach()  # detached because they're constant, targets
+
+            if sr_imgs.shape[1] != 3:
+                #randomly slect 3 bands to pass to VGG
+                idx = np.random.choice(sr_imgs.shape[1], 3, replace=False)
+                sr_imgs_in_vgg_space = self.truncated_vgg19(sr_imgs[:,idx,:,:])
+                hr_imgs_in_vgg_space = self.truncated_vgg19(hr_imgs[:,idx,:,:]).detach() # detached because they're constant, targets
+            else:
+                sr_imgs_in_vgg_space = self.truncated_vgg19(sr_imgs)
+                hr_imgs_in_vgg_space = self.truncated_vgg19(hr_imgs).detach()  # detached because they're constant, targets
+
             # Calculate the Perceptual loss between VGG encoded images to receive content loss
             content_loss = self.content_loss_criterion(sr_imgs_in_vgg_space, hr_imgs_in_vgg_space)
             
@@ -177,14 +187,30 @@ class SRGAN_model(pl.LightningModule):
             self.log(f'{key}', value)
 
         # only perform image logging for n pics, not all 200
-        if batch_idx<self.config.Logging.num_val_images:
-            # log Stadard image visualizations  
-            plot_lr_img = torch.clone(lr_imgs_vis)   # deep copy to avoid graph problems
-            plot_hr_img = torch.clone(hr_imgs)  
-            plot_sr_img = torch.clone(sr_imgs)  
-            val_img = plot_tensors(plot_lr_img,plot_sr_img,plot_hr_img,title="Val")
-            del plot_lr_img, plot_hr_img, plot_sr_img # delete copies from GPU
-            self.logger.experiment.log({"Val SR":  wandb.Image(val_img)}) # log val image
+        if batch_idx < self.config.Logging.num_val_images:
+            # use first MISR slice if present; otherwise the original LR
+            base_lr = lr_imgs_vis if (self.config.SR_type == "MISR") else lr_imgs
+
+            if self.config.Model.in_bands > 3:
+                # pick 3 bands **for visualization only**
+                idx = np.random.choice(sr_imgs.shape[1], 3, replace=False)
+                lr_vis = base_lr[:, idx, :, :]
+                hr_vis = hr_imgs[:, idx, :, :]
+                sr_vis = sr_imgs[:, idx, :, :]
+            else:
+                lr_vis = base_lr
+                hr_vis = hr_imgs
+                sr_vis = sr_imgs
+
+            # clone just for plotting (no side-effects)
+            plot_lr_img = lr_vis.clone()
+            plot_hr_img = hr_vis.clone()
+            plot_sr_img = sr_vis.clone()
+
+            val_img = plot_tensors(plot_lr_img, plot_sr_img, plot_hr_img, title="Val")
+
+            del plot_lr_img, plot_hr_img, plot_sr_img  # free refs
+            self.logger.experiment.log({"Val SR": wandb.Image(val_img)})
 
             # log MISR specific image visualizations
             if self.config.SR_type=="MISR":

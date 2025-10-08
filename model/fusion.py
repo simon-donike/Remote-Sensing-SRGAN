@@ -9,7 +9,7 @@ import wandb
 
 class RecursiveNet(nn.Module):
 # FROM HRResNet to fuse temporal images
-    def __init__(self):
+    def __init__(self,in_channels=3,num_layers=4,alpha_residual=False):
         '''
         Args:
             config : dict, configuration file

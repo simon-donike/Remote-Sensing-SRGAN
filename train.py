@@ -6,6 +6,9 @@ import wandb
 import os, datetime
 from multiprocessing import freeze_support
 
+# set visible GPUs
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
 # local imports
 from model.SRGAN import SRGAN_model
 
@@ -41,7 +44,7 @@ if __name__ == '__main__':
     #############################################################################################################
     # set up logging
     from pytorch_lightning.loggers import WandbLogger
-    wandb_project = "2023_SRGAN" #"testing"
+    wandb_project = "SRGAN_6band" #"testing"
     wandb_logger = WandbLogger(project=wandb_project,entity="simon-donike")
 
     from pytorch_lightning import loggers as pl_loggers

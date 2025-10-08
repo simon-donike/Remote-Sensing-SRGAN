@@ -20,7 +20,8 @@ if __name__ == '__main__':
     # General
     torch.set_float32_matmul_precision('medium')
     # load config
-    config = OmegaConf.load("config.yaml")
+    cfg_filepath = "config_20m.yaml"
+    config = OmegaConf.load(cfg_filepath)
 
     #############################################################################################################
     " LOAD MODEL "
@@ -29,7 +30,7 @@ if __name__ == '__main__':
     if config.Model.load_checkpoint:
         model = SRGAN_model.load_from_checkpoint(config.Model.ckpt_path, strict=False)
     else:
-        model = SRGAN_model()
+        model = SRGAN_model(config_file_path=cfg_filepath)
 
 
     #############################################################################################################
@@ -78,7 +79,7 @@ if __name__ == '__main__':
     trainer = Trainer(accelerator='cuda',
                     devices=[0],
                     check_val_every_n_epoch=1,
-                    val_check_interval=0.5,
+                    #val_check_interval=0.5,
                     limit_val_batches=250,
                     max_epochs=99999,
                     logger=[ 

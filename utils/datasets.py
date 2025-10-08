@@ -319,15 +319,19 @@ def dataset_selector(config):
     
     if config.Data.dataset_type=="S2_6b":
         desired_20m_order = ["B05_20m","B06_20m","B07_20m","B8A_20m","B11_20m","B12_20m"]
+        sr_factor = getattr(config.Generator, "scaling_factor", 4)         # e.g., set to 8 for ×8
+        hr_size   = (512,512)
         from utils.S2_6b_ds import S2SAFEDataset
-        ds_train =  S2SAFEDataset(
+        ds_train = S2SAFEDataset(
             phase="train",
             manifest_json="/data3/S2_20m/s2_safe_manifest_20m.json",
             group_by="granule",
             group_regex=r".*?/GRANULE/([^/]+)/IMG_DATA/.*",
-            bands_keep=desired_20m_order,   # keep only these
-            band_order=desired_20m_order,   # and enforce this order
+            bands_keep=desired_20m_order,
+            band_order=desired_20m_order,
             dtype="float32",
+            hr_size=hr_size,
+            sr_factor=sr_factor,
         )
         dl_train = DataLoader(ds_train, batch_size=config.Data.train_batch_size, shuffle=True
                                 ,num_workers=config.Data.num_workers,prefetch_factor=config.Data.prefetch_factor
@@ -337,9 +341,11 @@ def dataset_selector(config):
             manifest_json="/data3/S2_20m/s2_safe_manifest_20m.json",
             group_by="granule",
             group_regex=r".*?/GRANULE/([^/]+)/IMG_DATA/.*",
-            bands_keep=desired_20m_order,   # keep only these
-            band_order=desired_20m_order,   # and enforce this order
+            bands_keep=desired_20m_order,
+            band_order=desired_20m_order,
             dtype="float32",
+            hr_size=hr_size,
+            sr_factor=sr_factor,
         )
         dl_val = DataLoader(ds_val, batch_size=config.Data.val_batch_size, shuffle=False
                                 ,num_workers=config.Data.num_workers,prefetch_factor=config.Data.prefetch_factor

@@ -230,9 +230,10 @@ class S2SAFEWindowIndexBuilder:
                 # Skip unreadable file
                 continue
 
-        # 3) Persist
+        # 3) persist
         if self.manifest_json:
-            if self.skip_if_exists and self.manifest_json.exists():
+            # only skip if flag is False and file exists
+            if not self.skip_if_exists and self.manifest_json.exists():
                 return
             payload = {
                 "root": str(self.root),
@@ -268,13 +269,16 @@ class S2SAFEDataset(Dataset):
         manifest_json: Optional[str | Path] = None,
         files: Optional[List[Dict]] = None,
         windows: Optional[List[Dict]] = None,
-        # Multi-band grouping: group_by_key='granule' tries to stack bands with same granule ID
+        *,
         group_by: Optional[str] = None,
         group_regex: Optional[str] = None,
-        bands_keep: Optional[List[str]] = None,  # e.g. ["B02_10m","B03_10m","B04_10m"]
-        band_order: Optional[List[str]] = None,  # enforce this order if stacking multiple bands
+        bands_keep: Optional[List[str]] = None,
+        band_order: Optional[List[str]] = None,
         dtype: str = "float32",
-        scale: Optional[float] = None,  # e.g., 1/10000 for reflectance scaling
+        scale: Optional[float] = None,
+        hr_size: Tuple[int, int] = (512, 512),   # <— new (HR chip size)
+        sr_factor: int = 4,                      # <— new (SR scale)
+        antialias: bool = True,                  # <— optional, recommended
     ):
         if manifest_json:
             with open(manifest_json, "r") as f:
@@ -287,6 +291,17 @@ class S2SAFEDataset(Dataset):
         self.windows = windows
         self.dtype = dtype
         self.scale = scale
+        self.hr_size = tuple(map(int, hr_size))
+        self.sr_factor = int(sr_factor)
+        if self.sr_factor <= 0:
+            raise ValueError("sr_factor must be >= 1")
+
+        # ensure divisibility
+        if self.hr_size[0] % self.sr_factor != 0 or self.hr_size[1] % self.sr_factor != 0:
+            raise ValueError(f"hr_size {self.hr_size} must be divisible by sr_factor {self.sr_factor}")
+
+        self.lr_size = (self.hr_size[0] // self.sr_factor, self.hr_size[1] // self.sr_factor)
+        self.antialias = bool(antialias)
 
         self.bands_keep = list(bands_keep) if bands_keep else None  # keep order!
         self.band_order = list(band_order) if band_order else self.bands_keep
@@ -387,12 +402,13 @@ class S2SAFEDataset(Dataset):
         else:
             arr = arr.astype(self.dtype)
         return arr
-
+    
+    
     def __getitem__(self, idx: int):
         s = self.samples[idx]
-        rcwh = s["window"]  # (r0, c0, h, w) from manifest
-        target_hi = (512, 512)
-        target_lo = (128, 128)
+        rcwh = s["window"]  # (r0,c0,h,w) from manifest
+        target_hi = self.hr_size
+        target_lo = self.lr_size
 
         # use file's nodata for padding if available (first band as reference)
         nodata = None
@@ -400,86 +416,62 @@ class S2SAFEDataset(Dataset):
         if fi:
             nodata = fi.get("nodata", None)
 
-        # read centered 512x512 from each band
+        # read centered HR chips, force to hr_size
         hi_list = []
         for p in s["paths"]:
             chip = _read_centered_chip(p, rcwh, target_hw=target_hi, pad_value=nodata, dtype=self.dtype)
             hi_list.append(chip)
+        hi = np.stack(hi_list, axis=0)  # (C, H_hr, W_hr)
 
-        # Stack to (C, H, W)
-        hi = np.stack(hi_list, axis=0)  # (C, 512, 512)
-
-        # Optional scaling
         if self.scale is not None:
             hi = hi.astype(self.dtype) * self.scale
+        else:
+            hi = hi.astype(self.dtype)
 
-        # Downsample to 128x128 with bilinear
-        # -> torch interpolate expects (N, C, H, W)
+        # downsample to LR using specified factor
         hi_t = torch.from_numpy(hi)  # (C,H,W)
-        lo_t = F.interpolate(hi_t.unsqueeze(0), size=target_lo, mode="bilinear", align_corners=False).squeeze(0)
+        lo_t = F.interpolate(
+            hi_t.unsqueeze(0),
+            size=target_lo,
+            mode="bilinear",
+            align_corners=False,
+            antialias=self.antialias,   # safe on newer torch; set False if on old version
+        ).squeeze(0)
 
-        hr= hi_t.contiguous()
-        lr= lo_t.contiguous()
+        hr = hi_t.contiguous()
+        lr = lo_t.contiguous()
 
         # normalise to 0-1 per band
-        lr = normalise_10k(lr)
-        hr = normalise_10k(hr)
+        lr = normalise_10k(lr,stage="norm")
+        hr = normalise_10k(hr,stage="norm")
 
-        out = {
-            #"image_512": hr,     # (C, 512, 512)
-            #"image_128": lr,      # (C, 128, 128)
-            "bands": s["bands"],
-            "window_rcwh": tuple(rcwh),
-            "paths": s["paths"],
-        }
         return lr, hr
-
+    
+    
     def _save_examples(self, out_png: str, *, idx: int | None = None, seed: int | None = None):
-        """
-        Save one example: HR (512x512) and LR (128x128) side-by-side with the SAME random RGB band combo.
-        Expects __getitem__ to return a tuple (lr, hr), each shaped (C,H,W).
-        """
+        # ... unchanged except titles reflect dynamic sizes ...
         rng = random.Random(seed)
-
-        # 1️⃣ pick random sample
         if idx is None:
             if len(self) == 0:
                 raise RuntimeError("Dataset is empty.")
             idx = rng.randrange(len(self))
-
-        lr, hr = self[idx]  # each is torch.Tensor (C,H,W)
-
-        # 2️⃣ choose random RGB mapping
+        lr, hr = self[idx]
         C = hr.shape[0]
         if C < 3:
             raise ValueError(f"Need at least 3 channels for RGB, got {C}.")
         idx_rgb = tuple(sorted(rng.sample(range(C), 3)))
-
-        # 3️⃣ convert to numpy
         hr_np = hr.detach().cpu().numpy()
         lr_np = lr.detach().cpu().numpy()
-
-        # 4️⃣ build RGB images with same channels
         hr_rgb = _make_rgb(hr_np, idx_rgb)
         lr_rgb = _make_rgb(lr_np, idx_rgb)
-
-        # 5️⃣ labels
         r,g,b = idx_rgb
         map_str = f"R=ch{r} G=ch{g} B=ch{b}"
 
-        # 6️⃣ plot & save
         fig, axes = plt.subplots(1, 2, figsize=(10, 5), dpi=120, constrained_layout=True)
-        axes[0].imshow(hr_rgb)
-        axes[0].set_title(f"HR 512×512\n{map_str}")
-        axes[0].axis("off")
-
-        axes[1].imshow(lr_rgb)
-        axes[1].set_title("LR 128×128\n(same RGB mapping)")
-        axes[1].axis("off")
-
+        axes[0].imshow(hr_rgb); axes[0].set_title(f"HR {self.hr_size[0]}×{self.hr_size[1]}\n{map_str}"); axes[0].axis("off")
+        axes[1].imshow(lr_rgb); axes[1].set_title(f"LR {self.lr_size[0]}×{self.lr_size[1]}\n(×{self.sr_factor})"); axes[1].axis("off")
         fig.suptitle(f"Sample idx={idx}", fontsize=11)
-        fig.savefig(out_png, bbox_inches="tight")
-        plt.close(fig)
+        fig.savefig(out_png, bbox_inches="tight"); plt.close(fig)
 
 if __name__ == "__main__":
 
@@ -493,7 +485,7 @@ if __name__ == "__main__":
             "*B11*_20m*.jp2","*B12*_20m*.jp2",
         ],
         manifest_json="/data3/S2_20m/s2_safe_manifest_20m.json",
-        skip_if_exists=False,  # force overwrite
+        skip_if_exists=True,  # force overwrite
     )
     builder.build()
     print(f"Found {len(builder.files)} files and {len(builder.windows)} windows")
@@ -505,9 +497,12 @@ if __name__ == "__main__":
         manifest_json="/data3/S2_20m/s2_safe_manifest_20m.json",
         group_by="granule",
         group_regex=r".*?/GRANULE/([^/]+)/IMG_DATA/.*",
-        bands_keep=desired_20m_order,   # keep only these
-        band_order=desired_20m_order,   # and enforce this order
+        bands_keep=desired_20m_order,
+        band_order=desired_20m_order,
         dtype="float32",
+        hr_size=(512, 512),   # keep HR chip size
+        sr_factor=8,          # ← now 8×
+        antialias=True,
     )
 
     # 3) Iterate

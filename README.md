@@ -1,13 +1,13 @@
 ## ⚠️ Deprecation Notice
-This repository is **deprecated** and no longer maintained. Please use **Remote-Sensing-SRGAN** instead → [ESAOpenSR/Remote-Sensing-SRGAN](https://github.com/ESAOpenSR/Remote-Sensing-SRGAN)  
+This repository is **deprecated** and no longer maintained. Please use **SISR-RS-SRGAN** instead → [SISR-RS-SRGAN](https://github.com/simon-donike/SISR-RS-SRGAN)
 The new repo implements **SR-GANs for remote sensing** with:
 - **Flexible inputs:** any number of bands (e.g., Sentinel-2 RGB-NIR, 6-band stacks)
-- **Flexible architectures:** generator blocks `res`, `rcab`, `rrdb`, `lka`; configurable discriminator types
+- - **Flexible SR factors:** ×2 / ×4 / ×8
+- **Flexible architectures:** different generator and discriminator types/arcitechtures
 - **Flexible losses & weights:** content/perceptual/adversarial with explicit weighting
 - **Stabilized GAN training:** generator warm-up + **gradual adversarial weight ramp**
-- **Flexible SR factors:** ×2 / ×4 / ×8
-- **Whole-scene inference:** tiled processing for full Sentinel-2 SAFE/S2GM tiles  
-> **Note:** MISR (multi-image super-resolution) is **not supported** in the new repository (yet).
+- **Whole-scene inference:** tiled processing for full Sentinel-2 SAFE tiles  
+> **Note:** MISR (multi-image super-resolution) is **not supported** in the new repository.
 
 
 ---

@@ -1,5 +1,5 @@
 ## ⚠️ Deprecation Notice
-This repository is **deprecated** and no longer maintained. Please use **SISR-RS-SRGAN** instead → [SISR-RS-SRGAN](https://github.com/simon-donike/SISR-RS-SRGAN)
+This repository is **deprecated** and no longer maintained. Please use **ESAOpenSR-SRGAN** instead → [SRGAN](https://github.com/ESAOpenSR/SRGAN)
 The new repo implements **SR-GANs for remote sensing** with:
 - **Flexible inputs:** any number of bands (e.g., Sentinel-2 RGB-NIR, 6-band stacks)
 - - **Flexible SR factors:** ×2 / ×4 / ×8
